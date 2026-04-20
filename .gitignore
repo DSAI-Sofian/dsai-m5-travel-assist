@@ -1,0 +1,92 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# =========================
+# Environment variables (IMPORTANT)
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Logs
+# =========================
+*.log
+logs/
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+# VS Code / IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Jupyter (if used)
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Testing / coverage
+# =========================
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
+# =========================
+# Caches / temp
+# =========================
+.cache/
+tmp/
+temp/
+
+# =========================
+# SQLite / local DB (if added later)
+# =========================
+*.sqlite
+*.db
+
+# =========================
+# Docker
+# =========================
+docker-compose.override.yml
+
+# =========================
+# Hugging Face / deployment artifacts
+# =========================
+*.tar
+*.gz
+
+# =========================
+# Misc
+# =========================
+*.bak
+*.swp
+*.swo
+
+# Prevent committing local data
+data/
+outputs/

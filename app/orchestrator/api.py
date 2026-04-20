@@ -16,6 +16,14 @@ class TripRequest(BaseModel):
 def health():
     return {"status": "ok"}
 
+@app.get("/")
+def root():
+    return {
+        "message": "SEA Travel Planner API is running.",
+        "docs_url": "/docs",
+        "health_url": "/health"
+    }
+
 @app.post("/plan")
 def plan(req: TripRequest):
     return run_workflow(req.model_dump())
