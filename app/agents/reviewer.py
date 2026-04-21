@@ -1,21 +1,18 @@
-from pydantic import BaseModel
+import json
 from app.common.openai_client import get_openai_client, MODEL
-
-
-class ReviewerOutput(BaseModel):
-    within_budget: bool
-    estimated_total: float
-    accuracy_check: str
-    top_3_options: list[dict]
-    user_message: str
 
 
 def review_options(req: dict, planner: dict, executor: dict):
     client = get_openai_client()
 
-    prompt = f"""
-You are the Reviewer for a Southeast Asia travel planning app.
-
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a travel reviewer. Return ONLY valid JSON.",
+        },
+        {
+            "role": "user",
+            "content": f"""
 User request:
 {req}
 
@@ -25,21 +22,27 @@ Planner output:
 Executor output:
 {executor}
 
-Check whether the trip is realistic and within budget.
+Return JSON with:
+within_budget
+estimated_total
+accuracy_check
+top_3_options
+user_message
+""",
+        },
+    ]
 
-Return valid JSON with:
-- within_budget
-- estimated_total
-- accuracy_check
-- top_3_options
-- user_message
-"""
-
-    resp = client.responses.parse(
+    resp = client.chat.completions.create(
         model=MODEL,
-        input=[{"role": "system", "content": prompt}],
-        text_format=ReviewerOutput,
+        messages=messages,
+        temperature=0
     )
 
-    out = resp.output_parsed
-    return {"agent": "reviewer", **out.model_dump()}
+    content = resp.choices[0].message.content
+
+    try:
+        data = json.loads(content)
+    except Exception:
+        data = {"raw_output": content}
+
+    return {"agent": "reviewer", **data}

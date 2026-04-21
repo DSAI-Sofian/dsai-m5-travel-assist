@@ -1,37 +1,41 @@
-from pydantic import BaseModel
+import json
 from app.common.openai_client import get_openai_client, MODEL
-
-
-class PlannerOutput(BaseModel):
-    summary: str
-    travel_modes: list[str]
-    route_assumptions: list[str]
-    budget_notes: list[str]
 
 
 def plan_trip(req: dict):
     client = get_openai_client()
 
-    prompt = f"""
-You are the Planner for a Southeast Asia travel planning app.
-
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a travel planner. Return ONLY valid JSON.",
+        },
+        {
+            "role": "user",
+            "content": f"""
 User request:
 {req}
 
-Return valid JSON with:
-- summary
-- travel_modes
-- route_assumptions
-- budget_notes
+Return JSON with:
+summary
+travel_modes
+route_assumptions
+budget_notes
+""",
+        },
+    ]
 
-Keep the answer practical and budget-aware.
-"""
-
-    resp = client.responses.parse(
+    resp = client.chat.completions.create(
         model=MODEL,
-        input=[{"role": "system", "content": prompt}],
-        text_format=PlannerOutput,
+        messages=messages,
+        temperature=0
     )
 
-    out = resp.output_parsed
-    return {"agent": "planner", **out.model_dump()}
+    content = resp.choices[0].message.content
+
+    try:
+        data = json.loads(content)
+    except Exception:
+        data = {"summary": content}
+
+    return {"agent": "planner", **data}

@@ -1,5 +1,8 @@
 import os
+from dotenv import load_dotenv
 from openai import OpenAI
+
+load_dotenv()
 
 MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 
