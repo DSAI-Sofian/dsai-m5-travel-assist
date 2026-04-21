@@ -19,7 +19,6 @@ def review_options(req: dict, planner: dict, executor: dict):
 Review the proposed trip and return STRICT JSON in exactly this structure:
 
 {{
-  "within_budget": true,
   "estimated_total": 1200,
   "accuracy_check": "Short review of whether the plan is realistic and complete.",
   "top_3_options": [
@@ -43,9 +42,13 @@ Rules:
 - Return ONLY JSON
 - All monetary values must be in SGD
 - If original values are in another currency, convert to SGD
-- You may include original currency in brackets (e.g. USD 900 (~SGD 1200))
+- You may include original currency in brackets if helpful
 - top_3_options must always contain exactly 3 objects
 - each option must include both "name" and "fit"
+- estimated_total must be a number
+- accuracy_check must be a string
+- user_message must be a string
+- Do NOT include within_budget in the JSON
 
 User request:
 {req}
@@ -71,7 +74,6 @@ Executor output:
         data = json.loads(content)
     except Exception:
         data = {
-            "within_budget": False,
             "estimated_total": 0,
             "accuracy_check": "Reviewer returned non-JSON output.",
             "top_3_options": [
@@ -82,51 +84,64 @@ Executor output:
             "user_message": content or "No reviewer message returned.",
         }
 
-    # --- Normalize structure ---
     if not isinstance(data.get("top_3_options"), list):
         data["top_3_options"] = []
 
-    cleaned = []
+    cleaned_options = []
     for i, item in enumerate(data["top_3_options"][:3], start=1):
         if isinstance(item, dict):
-            cleaned.append(
+            cleaned_options.append(
                 {
                     "name": str(item.get("name", f"Option {i}")),
                     "fit": str(item.get("fit", "No fit description provided.")),
                 }
             )
         else:
-            cleaned.append(
+            cleaned_options.append(
                 {
                     "name": f"Option {i}",
                     "fit": str(item),
                 }
             )
 
-    while len(cleaned) < 3:
-        idx = len(cleaned) + 1
-        cleaned.append(
+    while len(cleaned_options) < 3:
+        idx = len(cleaned_options) + 1
+        cleaned_options.append(
             {
                 "name": f"Option {idx}",
                 "fit": "No fit description provided.",
             }
         )
 
-    data["top_3_options"] = cleaned
-
-    # --- Normalize other fields ---
-    data["within_budget"] = bool(data.get("within_budget", False))
+    data["top_3_options"] = cleaned_options
 
     try:
-        data["estimated_total"] = float(data.get("estimated_total", 0))
+        estimated_total = float(data.get("estimated_total", 0))
     except Exception:
-        data["estimated_total"] = 0.0
+        estimated_total = 0.0
 
+    try:
+        budget = float(req.get("budget", 0))
+    except Exception:
+        budget = 0.0
+
+    within_budget = estimated_total <= budget
+
+    data["estimated_total"] = estimated_total
+    data["within_budget"] = within_budget
     data["accuracy_check"] = str(
         data.get("accuracy_check", "No accuracy check provided.")
     )
-    data["user_message"] = str(
-        data.get("user_message", "No user message provided.")
-    )
+
+    if within_budget:
+        data["user_message"] = (
+            f"Your trip looks feasible. The estimated total of SGD {estimated_total:.0f} "
+            f"is within your budget of SGD {budget:.0f}."
+        )
+    else:
+        data["user_message"] = (
+            f"Your estimated total of SGD {estimated_total:.0f} exceeds your budget of "
+            f"SGD {budget:.0f}. Consider reducing flights, hotel, or activities."
+        )
 
     return {"agent": "reviewer", **data}
