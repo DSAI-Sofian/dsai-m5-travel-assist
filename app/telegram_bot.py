@@ -33,10 +33,18 @@ async def format_and_send(update: Update):
         "preferences": [text],
     }
 
-    async with httpx.AsyncClient(timeout=120) as client:
-        r = await client.post(f"{BACKEND_URL}/plan", json=payload)
-        r.raise_for_status()
-        result = r.json()
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            backend_base = BACKEND_URL.rstrip("/")
+            r = await client.post(f"{backend_base}/plan", json=payload)
+            r.raise_for_status()
+            result = r.json()
+    except Exception as e:
+        await send_telegram_message(
+            chat_id,
+            f"Sorry, the trip planner is currently unavailable.\nError: {str(e)}"
+        )
+        return
 
     reviewer = result.get("reviewer", {})
     top = reviewer.get("top_3_options", [])
@@ -46,11 +54,22 @@ async def format_and_send(update: Update):
         f"Within budget: {reviewer.get('within_budget')}",
         f"Estimated total: {reviewer.get('estimated_total')}",
         "",
-        "Top 3 options:",
+        "Top options:",
     ]
 
-    for o in top:
-        msg.append(f"- {o.get('name')}: {o.get('fit')}")
+    if not top:
+        msg.append("- No options returned")
+    else:
+        for o in top:
+            if isinstance(o, dict):
+                name = o.get("name", "Option")
+                fit = o.get("fit", "")
+                if fit:
+                    msg.append(f"- {name}: {fit}")
+                else:
+                    msg.append(f"- {name}")
+            else:
+                msg.append(f"- {str(o)}")
 
     await send_telegram_message(chat_id, "\n".join(msg))
 
@@ -73,6 +92,15 @@ async def startup():
 async def shutdown():
     await ptb.stop()
     await ptb.shutdown()
+
+
+@app.get("/")
+def root():
+    return {
+        "message": "SEA Travel Planner Telegram bot is running.",
+        "health_url": "/health",
+        "webhook_url": "/telegram/webhook",
+    }
 
 
 @app.get("/health")
