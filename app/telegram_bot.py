@@ -4,6 +4,7 @@ import httpx
 from fastapi import FastAPI, Request, Response
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters
+from app.common.request_parser import parse_trip_request
 
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 WEBHOOK_URL = os.environ.get("TELEGRAM_WEBHOOK_URL")
@@ -11,8 +12,6 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000")
 
 app = FastAPI(title="SEA Travel Planner Bot")
 ptb = None
-
-# Basic in-memory deduplication for webhook retries
 processed_update_ids = set()
 
 
@@ -34,14 +33,7 @@ async def format_and_send(update: Update):
     text = update.message.text if update.message else ""
     chat_id = update.effective_chat.id
 
-    payload = {
-        "origin": "Singapore",
-        "destinations": ["Malaysia", "Indonesia"],
-        "budget": 1200,
-        "duration_days": 5,
-        "travelers": 1,
-        "preferences": [text],
-    }
+    payload = parse_trip_request(text)
 
     await ptb.bot.send_chat_action(chat_id=chat_id, action="typing")
 
@@ -91,6 +83,8 @@ async def format_and_send(update: Update):
     msg = [
         "Trip plan ready",
         "",
+        f"Destination: {', '.join(payload.get('destinations', []))}",
+        f"Duration: {payload.get('duration_days')} days",
         f"Budget fit: {'Yes' if reviewer.get('within_budget') else 'No'}",
         f"Estimated cost: SGD {reviewer.get('estimated_total')}",
     ]
