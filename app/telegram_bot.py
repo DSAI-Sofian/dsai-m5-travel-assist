@@ -20,6 +20,7 @@ async def send_telegram_message(chat_id: int, text: str):
                 "chat_id": chat_id,
                 "text": text,
                 "parse_mode": "Markdown",
+                "disable_web_page_preview": True,
             },
         )
 
@@ -54,6 +55,8 @@ async def format_and_send(update: Update):
     reviewer = result.get("reviewer", {})
     top = reviewer.get("top_3_options", [])
     cost_breakdown = executor.get("cost_breakdown", {})
+    travel = executor.get("travel_details", {})
+    places = executor.get("places", [])
 
     msg = [
         "✈️ *Trip Plan Ready*",
@@ -75,6 +78,41 @@ async def format_and_send(update: Update):
     msg.append(f"- Local Transport: {cost_breakdown.get('local_transport', 'SGD 0')}")
     msg.append(f"- Food: {cost_breakdown.get('food', 'SGD 0')}")
     msg.append(f"- Total: {cost_breakdown.get('total', 'SGD 0')}")
+
+    msg.append("")
+    msg.append("🧭 *Travel Details:*")
+
+    flight = travel.get("flight", {})
+    msg.append(f"✈️ Flight: {flight.get('suggestion', '-')}")
+    msg.append(f"   💰 {flight.get('estimated_price', '-')}")
+    if flight.get("search_link"):
+        msg.append(f"   🔗 {flight.get('search_link')}")
+
+    hotel = travel.get("hotel", {})
+    msg.append("")
+    msg.append(f"🏨 Hotel: {hotel.get('name', '-')}")
+    msg.append(f"   💰 {hotel.get('estimated_price', '-')}")
+    msg.append(f"   📍 {hotel.get('location_note', '-')}")
+    if hotel.get("booking_link"):
+        msg.append(f"   🔗 {hotel.get('booking_link')}")
+
+    transport = travel.get("transport", {})
+    msg.append("")
+    msg.append(f"🚗 Transport: {transport.get('mode', '-')}")
+    msg.append(f"   💰 {transport.get('estimated_cost', '-')}")
+    msg.append(f"   ⏱️ {transport.get('notes', '-')}")
+
+    if places:
+        msg.append("")
+        msg.append("📍 *Key Places:*")
+        for p in places[:3]:
+            if isinstance(p, dict):
+                msg.append(f"- {p.get('name', 'Place')}")
+                if p.get("google_maps_link"):
+                    msg.append(f"  🔗 {p.get('google_maps_link')}")
+                msg.append(f"  🚶 {p.get('distance_note', 'Distance not provided')}")
+            else:
+                msg.append(f"- {str(p)}")
 
     msg.append("")
     msg.append("🌍 *Top Options:*")
