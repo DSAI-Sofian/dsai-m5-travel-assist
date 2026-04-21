@@ -4,7 +4,30 @@ from fastapi import FastAPI, Request, Response
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters
 
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+WEBHOOK_URL = os.environ.get("TELEGRAM_WEBHOOK_URL")
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000")
+
+app = FastAPI(title="SEA Travel Planner Bot")
+ptb = None
+
+
+async def send_telegram_message(chat_id: int, text: str):
+    async with httpx.AsyncClient(timeout=30) as client:
+        await client.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+            json={
+                "chat_id": chat_id,
+                "text": text,
+                "parse_mode": "Markdown",
+                "disable_web_page_preview": True,
+            },
+        )
+
+
 async def format_and_send(update: Update):
+    global ptb
+
     text = update.message.text if update.message else ""
     chat_id = update.effective_chat.id
 
@@ -17,10 +40,8 @@ async def format_and_send(update: Update):
         "preferences": [text],
     }
 
-    # Show Telegram native typing indicator
     await ptb.bot.send_chat_action(chat_id=chat_id, action="typing")
 
-    # Optional temporary italic status message
     status_message = await ptb.bot.send_message(
         chat_id=chat_id,
         text="_Agents are working on your request..._",
@@ -35,18 +56,24 @@ async def format_and_send(update: Update):
             result = r.json()
     except Exception as e:
         try:
-            await ptb.bot.delete_message(chat_id=chat_id, message_id=status_message.message_id)
+            await ptb.bot.delete_message(
+                chat_id=chat_id,
+                message_id=status_message.message_id,
+            )
         except Exception:
             pass
 
         await send_telegram_message(
             chat_id,
-            f"❌ Failed to generate trip.\nError: {str(e)}"
+            f"❌ Failed to generate trip.\nError: {str(e)}",
         )
         return
 
     try:
-        await ptb.bot.delete_message(chat_id=chat_id, message_id=status_message.message_id)
+        await ptb.bot.delete_message(
+            chat_id=chat_id,
+            message_id=status_message.message_id,
+        )
     except Exception:
         pass
 
@@ -145,3 +172,58 @@ async def format_and_send(update: Update):
                 msg.append(f"{i}. {str(o)}")
 
     await send_telegram_message(chat_id, "\n".join(msg))
+
+
+async def on_text(update, context):
+    await format_and_send(update)
+
+
+@app.on_event("startup")
+async def startup():
+    global ptb
+
+    if not BOT_TOKEN:
+        raise RuntimeError("TELEGRAM_BOT_TOKEN is not set")
+
+    if not WEBHOOK_URL:
+        raise RuntimeError("TELEGRAM_WEBHOOK_URL is not set")
+
+    ptb = Application.builder().token(BOT_TOKEN).updater(None).build()
+    ptb.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
+
+    await ptb.initialize()
+    await ptb.start()
+    await ptb.bot.set_webhook(url=WEBHOOK_URL)
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    global ptb
+
+    if ptb is not None:
+        await ptb.stop()
+        await ptb.shutdown()
+
+
+@app.get("/")
+def root():
+    return {
+        "message": "SEA Travel Planner Telegram bot is running.",
+        "health_url": "/health",
+        "webhook_url": "/telegram/webhook",
+    }
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.post("/telegram/webhook")
+async def telegram_webhook(request: Request):
+    global ptb
+
+    data = await request.json()
+    update = Update.de_json(data, ptb.bot)
+    await ptb.process_update(update)
+    return Response(status_code=200)
