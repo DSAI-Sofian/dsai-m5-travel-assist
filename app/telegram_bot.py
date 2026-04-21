@@ -19,7 +19,8 @@ async def send_telegram_message(chat_id: int, text: str):
             json={
                 "chat_id": chat_id,
                 "text": text,
-                "parse_mode": "Markdown",
+                # Markdown disabled to avoid silent failures
+                # "parse_mode": "Markdown",
                 "disable_web_page_preview": True,
             },
         )
@@ -40,12 +41,13 @@ async def format_and_send(update: Update):
         "preferences": [text],
     }
 
+    # Show typing indicator
     await ptb.bot.send_chat_action(chat_id=chat_id, action="typing")
 
+    # Temporary message
     status_message = await ptb.bot.send_message(
         chat_id=chat_id,
         text="_Agents are working on your request..._",
-        parse_mode="Markdown",
     )
 
     try:
@@ -56,10 +58,7 @@ async def format_and_send(update: Update):
             result = r.json()
     except Exception as e:
         try:
-            await ptb.bot.delete_message(
-                chat_id=chat_id,
-                message_id=status_message.message_id,
-            )
+            await ptb.bot.delete_message(chat_id=chat_id, message_id=status_message.message_id)
         except Exception:
             pass
 
@@ -69,11 +68,9 @@ async def format_and_send(update: Update):
         )
         return
 
+    # Remove temp message
     try:
-        await ptb.bot.delete_message(
-            chat_id=chat_id,
-            message_id=status_message.message_id,
-        )
+        await ptb.bot.delete_message(chat_id=chat_id, message_id=status_message.message_id)
     except Exception:
         pass
 
@@ -86,92 +83,53 @@ async def format_and_send(update: Update):
     daily_itinerary = executor.get("daily_itinerary", [])
 
     msg = [
-        "✈️ *Trip Plan Ready*",
+        "Trip plan ready",
         "",
-        f"💰 Budget Fit: {'Yes' if reviewer.get('within_budget') else 'No'}",
-        f"💵 Estimated Cost: SGD ${reviewer.get('estimated_total')}",
+        f"Budget fit: {'Yes' if reviewer.get('within_budget') else 'No'}",
+        f"Estimated cost: SGD {reviewer.get('estimated_total')}",
     ]
 
     summary = reviewer.get("user_message")
     if summary:
         msg.append("")
-        msg.append(f"📝 {summary}")
+        msg.append(summary)
 
     msg.append("")
-    msg.append("📊 *Cost Breakdown:*")
+    msg.append("Cost breakdown:")
     msg.append(f"- Flight: {cost_breakdown.get('flight', 'SGD 0')}")
     msg.append(f"- Hotel: {cost_breakdown.get('hotel', 'SGD 0')}")
     msg.append(f"- Activities: {cost_breakdown.get('activities', 'SGD 0')}")
-    msg.append(f"- Local Transport: {cost_breakdown.get('local_transport', 'SGD 0')}")
+    msg.append(f"- Transport: {cost_breakdown.get('local_transport', 'SGD 0')}")
     msg.append(f"- Food: {cost_breakdown.get('food', 'SGD 0')}")
     msg.append(f"- Total: {cost_breakdown.get('total', 'SGD 0')}")
 
-    msg.append("")
-    msg.append("🧭 *Travel Details:*")
-
-    flight = travel.get("flight", {})
-    msg.append(f"✈️ Flight: {flight.get('suggestion', '-')}")
-    msg.append(f"   💰 {flight.get('estimated_price', '-')}")
-    if flight.get("search_link"):
-        msg.append(f"   🔗 {flight.get('search_link')}")
-
-    hotel = travel.get("hotel", {})
-    msg.append("")
-    msg.append(f"🏨 Hotel: {hotel.get('name', '-')}")
-    msg.append(f"   💰 {hotel.get('estimated_price', '-')}")
-    msg.append(f"   📍 {hotel.get('location_note', '-')}")
-    if hotel.get("booking_link"):
-        msg.append(f"   🔗 {hotel.get('booking_link')}")
-
-    transport = travel.get("transport", {})
-    msg.append("")
-    msg.append(f"🚗 Transport: {transport.get('mode', '-')}")
-    msg.append(f"   💰 {transport.get('estimated_cost', '-')}")
-    msg.append(f"   ⏱️ {transport.get('notes', '-')}")
-
-    if places:
-        msg.append("")
-        msg.append("📍 *Key Places:*")
-        for p in places[:3]:
-            if isinstance(p, dict):
-                msg.append(f"- {p.get('name', 'Place')}")
-                if p.get("google_maps_link"):
-                    msg.append(f"  🔗 {p.get('google_maps_link')}")
-                msg.append(f"  🚶 {p.get('distance_note', 'Distance not provided')}")
-            else:
-                msg.append(f"- {str(p)}")
-
     if daily_itinerary:
         msg.append("")
-        msg.append("🗓️ *Day-by-Day Itinerary:*")
+        msg.append("Day-by-day itinerary:")
         for item in daily_itinerary[:5]:
             if isinstance(item, dict):
-                day = item.get("day", "-")
-                title = item.get("title", "Plan")
-                details = item.get("details", "")
-                msg.append(f"*Day {day}: {title}*")
-                if details:
-                    msg.append(details)
-            else:
-                msg.append(f"- {str(item)}")
+                msg.append(f"Day {item.get('day', '-')}: {item.get('title', '')}")
+                if item.get("details"):
+                    msg.append(item.get("details"))
 
-    msg.append("")
-    msg.append("🌍 *Top Options:*")
-
-    if not top:
-        msg.append("- No options returned")
-    else:
+    if top:
+        msg.append("")
+        msg.append("Top options:")
         for i, o in enumerate(top, 1):
             if isinstance(o, dict):
-                name = o.get("name", f"Option {i}")
-                fit = o.get("fit", "")
-                msg.append(f"{i}. *{name}*")
-                if fit:
-                    msg.append(f"   {fit}")
-            else:
-                msg.append(f"{i}. {str(o)}")
+                msg.append(f"{i}. {o.get('name', '')}")
+                if o.get("fit"):
+                    msg.append(o.get("fit"))
 
-    await send_telegram_message(chat_id, "\n".join(msg))
+    final_message = "\n".join(msg)
+
+    # Debug output (VERY IMPORTANT)
+    print("FINAL MESSAGE:\n", final_message)
+
+    try:
+        await send_telegram_message(chat_id, final_message)
+    except Exception as e:
+        await send_telegram_message(chat_id, f"⚠️ Send error: {str(e)}")
 
 
 async def on_text(update, context):
@@ -199,7 +157,6 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     global ptb
-
     if ptb is not None:
         await ptb.stop()
         await ptb.shutdown()
@@ -209,8 +166,6 @@ async def shutdown():
 def root():
     return {
         "message": "SEA Travel Planner Telegram bot is running.",
-        "health_url": "/health",
-        "webhook_url": "/telegram/webhook",
     }
 
 
