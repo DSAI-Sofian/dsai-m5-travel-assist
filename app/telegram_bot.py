@@ -16,7 +16,11 @@ async def send_telegram_message(chat_id: int, text: str):
     async with httpx.AsyncClient(timeout=30) as client:
         await client.post(
             f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-            json={"chat_id": chat_id, "text": text},
+            json={
+                "chat_id": chat_id,
+                "text": text,
+                "parse_mode": "Markdown",
+            },
         )
 
 
@@ -42,34 +46,51 @@ async def format_and_send(update: Update):
     except Exception as e:
         await send_telegram_message(
             chat_id,
-            f"Sorry, the trip planner is currently unavailable.\nError: {str(e)}"
+            f"❌ Failed to generate trip.\nError: {str(e)}"
         )
         return
 
+    executor = result.get("executor", {})
     reviewer = result.get("reviewer", {})
     top = reviewer.get("top_3_options", [])
+    cost_breakdown = executor.get("cost_breakdown", {})
 
     msg = [
-        "Trip plan ready.",
-        f"Within budget: {reviewer.get('within_budget')}",
-        f"Estimated total: {reviewer.get('estimated_total')}",
+        "✈️ *Trip Plan Ready*",
         "",
-        "Top options:",
+        f"💰 Budget Fit: {'Yes' if reviewer.get('within_budget') else 'No'}",
+        f"💵 Estimated Cost: SGD ${reviewer.get('estimated_total')}",
     ]
+
+    summary = reviewer.get("user_message")
+    if summary:
+        msg.append("")
+        msg.append(f"📝 {summary}")
+
+    msg.append("")
+    msg.append("📊 *Cost Breakdown:*")
+    msg.append(f"- Flight: {cost_breakdown.get('flight', 'SGD 0')}")
+    msg.append(f"- Hotel: {cost_breakdown.get('hotel', 'SGD 0')}")
+    msg.append(f"- Activities: {cost_breakdown.get('activities', 'SGD 0')}")
+    msg.append(f"- Local Transport: {cost_breakdown.get('local_transport', 'SGD 0')}")
+    msg.append(f"- Food: {cost_breakdown.get('food', 'SGD 0')}")
+    msg.append(f"- Total: {cost_breakdown.get('total', 'SGD 0')}")
+
+    msg.append("")
+    msg.append("🌍 *Top Options:*")
 
     if not top:
         msg.append("- No options returned")
     else:
-        for o in top:
+        for i, o in enumerate(top, 1):
             if isinstance(o, dict):
-                name = o.get("name", "Option")
+                name = o.get("name", f"Option {i}")
                 fit = o.get("fit", "")
+                msg.append(f"{i}. *{name}*")
                 if fit:
-                    msg.append(f"- {name}: {fit}")
-                else:
-                    msg.append(f"- {name}")
+                    msg.append(f"   {fit}")
             else:
-                msg.append(f"- {str(o)}")
+                msg.append(f"{i}. {str(o)}")
 
     await send_telegram_message(chat_id, "\n".join(msg))
 
