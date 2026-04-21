@@ -1,4 +1,5 @@
 import os
+import asyncio
 import httpx
 from fastapi import FastAPI, Request, Response
 from telegram import Update
@@ -10,6 +11,9 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000")
 
 app = FastAPI(title="SEA Travel Planner Bot")
 ptb = None
+
+# Basic in-memory deduplication for webhook retries
+processed_update_ids = set()
 
 
 async def send_telegram_message(chat_id: int, text: str):
@@ -134,7 +138,9 @@ async def format_and_send(update: Update):
         for item in nearby_attractions[:3]:
             if isinstance(item, dict):
                 msg.append(f"- {item.get('name', 'Attraction')}")
-                msg.append(f"  Time from hotel: {item.get('distance_note', 'Not provided')}")
+                msg.append(
+                    f"  Time from hotel: {item.get('distance_note', 'Not provided')}"
+                )
                 if item.get("google_maps_link"):
                     msg.append(f"  Maps: {item.get('google_maps_link')}")
             else:
@@ -146,7 +152,9 @@ async def format_and_send(update: Update):
         for item in restaurants[:3]:
             if isinstance(item, dict):
                 msg.append(f"- {item.get('name', 'Restaurant')}")
-                msg.append(f"  Time from hotel: {item.get('distance_note', 'Not provided')}")
+                msg.append(
+                    f"  Time from hotel: {item.get('distance_note', 'Not provided')}"
+                )
                 if item.get("google_maps_link"):
                     msg.append(f"  Maps: {item.get('google_maps_link')}")
             else:
@@ -230,9 +238,18 @@ def health():
 
 @app.post("/telegram/webhook")
 async def telegram_webhook(request: Request):
-    global ptb
+    global ptb, processed_update_ids
 
     data = await request.json()
     update = Update.de_json(data, ptb.bot)
-    await ptb.process_update(update)
+
+    update_id = getattr(update, "update_id", None)
+    if update_id in processed_update_ids:
+        return Response(status_code=200)
+
+    if update_id is not None:
+        processed_update_ids.add(update_id)
+
+    asyncio.create_task(ptb.process_update(update))
+
     return Response(status_code=200)
