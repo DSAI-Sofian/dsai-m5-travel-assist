@@ -10,8 +10,7 @@ def review_options(req: dict, planner: dict, executor: dict):
             "role": "system",
             "content": (
                 "You are a travel reviewer for a Southeast Asia travel planner app. "
-                "Return ONLY valid JSON. "
-                "Do not include markdown, explanation outside JSON, or code fences."
+                "Return ONLY valid JSON. Do not include markdown, explanation outside JSON, or code fences."
             ),
         },
         {
@@ -42,12 +41,11 @@ Review the proposed trip and return STRICT JSON in exactly this structure:
 
 Rules:
 - Return ONLY JSON
-- top_3_options must always be a list of exactly 3 objects
-- each object in top_3_options must contain both "name" and "fit"
-- within_budget must be true or false
-- estimated_total must be a number
-- accuracy_check must be a string
-- user_message must be a string
+- All monetary values must be in SGD
+- If original values are in another currency, convert to SGD
+- You may include original currency in brackets (e.g. USD 900 (~SGD 1200))
+- top_3_options must always contain exactly 3 objects
+- each option must include both "name" and "fit"
 
 User request:
 {req}
@@ -84,40 +82,40 @@ Executor output:
             "user_message": content or "No reviewer message returned.",
         }
 
-    # Safety cleanup to guarantee expected structure
+    # --- Normalize structure ---
     if not isinstance(data.get("top_3_options"), list):
         data["top_3_options"] = []
 
-    cleaned_options = []
+    cleaned = []
     for i, item in enumerate(data["top_3_options"][:3], start=1):
         if isinstance(item, dict):
-            cleaned_options.append(
+            cleaned.append(
                 {
                     "name": str(item.get("name", f"Option {i}")),
                     "fit": str(item.get("fit", "No fit description provided.")),
                 }
             )
         else:
-            cleaned_options.append(
+            cleaned.append(
                 {
                     "name": f"Option {i}",
                     "fit": str(item),
                 }
             )
 
-    while len(cleaned_options) < 3:
-        idx = len(cleaned_options) + 1
-        cleaned_options.append(
+    while len(cleaned) < 3:
+        idx = len(cleaned) + 1
+        cleaned.append(
             {
                 "name": f"Option {idx}",
                 "fit": "No fit description provided.",
             }
         )
 
-    data["top_3_options"] = cleaned_options
+    data["top_3_options"] = cleaned
 
-    if not isinstance(data.get("within_budget"), bool):
-        data["within_budget"] = False
+    # --- Normalize other fields ---
+    data["within_budget"] = bool(data.get("within_budget", False))
 
     try:
         data["estimated_total"] = float(data.get("estimated_total", 0))
