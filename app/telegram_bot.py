@@ -57,6 +57,7 @@ async def format_and_send(update: Update):
     cost_breakdown = executor.get("cost_breakdown", {})
     travel = executor.get("travel_details", {})
     places = executor.get("places", [])
+    daily_itinerary = executor.get("daily_itinerary", [])
 
     msg = [
         "✈️ *Trip Plan Ready*",
@@ -113,6 +114,20 @@ async def format_and_send(update: Update):
                 msg.append(f"  🚶 {p.get('distance_note', 'Distance not provided')}")
             else:
                 msg.append(f"- {str(p)}")
+
+    if daily_itinerary:
+        msg.append("")
+        msg.append("🗓️ *Day-by-Day Itinerary:*")
+        for item in daily_itinerary[:5]:
+            if isinstance(item, dict):
+                day = item.get("day", "-")
+                title = item.get("title", "Plan")
+                details = item.get("details", "")
+                msg.append(f"*Day {day}: {title}*")
+                if details:
+                    msg.append(details)
+            else:
+                msg.append(f"- {str(item)}")
 
     msg.append("")
     msg.append("🌍 *Top Options:*")
