@@ -1,3 +1,9 @@
+import os
+import httpx
+from fastapi import FastAPI, Request, Response
+from telegram import Update
+from telegram.ext import Application, MessageHandler, filters
+
 async def format_and_send(update: Update):
     text = update.message.text if update.message else ""
     chat_id = update.effective_chat.id
