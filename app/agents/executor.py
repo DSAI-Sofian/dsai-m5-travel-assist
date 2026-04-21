@@ -27,14 +27,6 @@ Execute the travel plan and return STRICT JSON in exactly this structure:
       "details": "Short description of the day's plan"
     }}
   ],
-  "nearby_attractions": [
-    "Attraction 1",
-    "Attraction 2"
-  ],
-  "restaurants": [
-    "Restaurant 1",
-    "Restaurant 2"
-  ],
   "travel_details": {{
     "flight": {{
       "suggestion": "Airline + route",
@@ -53,12 +45,18 @@ Execute the travel plan and return STRICT JSON in exactly this structure:
       "notes": "Typical travel time or guidance"
     }}
   }},
-  "places": [
+  "nearby_attractions": [
     {{
-      "name": "Place name",
-      "type": "attraction / food",
+      "name": "Attraction name",
       "google_maps_link": "Google Maps search URL",
-      "distance_note": "Approximate distance or travel time from hotel"
+      "distance_note": "Approximate time from hotel"
+    }}
+  ],
+  "restaurants": [
+    {{
+      "name": "Restaurant name",
+      "google_maps_link": "Google Maps search URL",
+      "distance_note": "Approximate time from hotel"
     }}
   ],
   "cost_breakdown": {{
@@ -80,14 +78,17 @@ Rules:
 - Use realistic travel suggestions and realistic price estimates
 - Flight links must be Google Flights search URLs
 - Hotel links must be Booking.com search URLs
-- Places must include Google Maps search URLs
-- Distances and travel times should be approximate and practical
+- nearby_attractions must contain 2 to 3 useful attractions close to the suggested hotel
+- restaurants must contain 2 to 3 useful food places close to the suggested hotel
+- Each nearby attraction and restaurant must include:
+  name, google_maps_link, distance_note
+- distance_note must describe approximate travel time from the suggested hotel
+  for example: "8 min drive from hotel" or "12 min walk from hotel"
 - cost_breakdown must always include:
   flight, hotel, activities, local_transport, food, total
 - daily_itinerary must be a list
 - nearby_attractions must be a list
 - restaurants must be a list
-- places must be a list
 - best_fit_days must be a number
 
 User request:
@@ -112,8 +113,6 @@ Planner output:
     except Exception:
         data = {
             "daily_itinerary": [],
-            "nearby_attractions": [],
-            "restaurants": [],
             "travel_details": {
                 "flight": {
                     "suggestion": "No flight suggestion returned",
@@ -132,7 +131,8 @@ Planner output:
                     "notes": "No transport notes returned",
                 },
             },
-            "places": [],
+            "nearby_attractions": [],
+            "restaurants": [],
             "cost_breakdown": {
                 "flight": "SGD 0",
                 "hotel": "SGD 0",
@@ -148,17 +148,14 @@ Planner output:
     if not isinstance(data.get("daily_itinerary"), list):
         data["daily_itinerary"] = []
 
+    if not isinstance(data.get("travel_details"), dict):
+        data["travel_details"] = {}
+
     if not isinstance(data.get("nearby_attractions"), list):
         data["nearby_attractions"] = []
 
     if not isinstance(data.get("restaurants"), list):
         data["restaurants"] = []
-
-    if not isinstance(data.get("places"), list):
-        data["places"] = []
-
-    if not isinstance(data.get("travel_details"), dict):
-        data["travel_details"] = {}
 
     if not isinstance(data.get("cost_breakdown"), dict):
         data["cost_breakdown"] = {}
@@ -187,9 +184,7 @@ Planner output:
             "name": str(hotel.get("name", "No hotel suggestion returned")),
             "estimated_price": str(hotel.get("estimated_price", "SGD 0")),
             "booking_link": str(hotel.get("booking_link", "")),
-            "location_note": str(
-                hotel.get("location_note", "No location note returned")
-            ),
+            "location_note": str(hotel.get("location_note", "No location note returned")),
         },
         "transport": {
             "mode": str(transport.get("mode", "No transport suggestion returned")),
@@ -198,30 +193,45 @@ Planner output:
         },
     }
 
-    cleaned_places = []
-    for item in data["places"]:
+    cleaned_attractions = []
+    for item in data["nearby_attractions"][:3]:
         if isinstance(item, dict):
-            cleaned_places.append(
+            cleaned_attractions.append(
                 {
-                    "name": str(item.get("name", "Unnamed place")),
-                    "type": str(item.get("type", "place")),
+                    "name": str(item.get("name", "Unnamed attraction")),
                     "google_maps_link": str(item.get("google_maps_link", "")),
-                    "distance_note": str(
-                        item.get("distance_note", "Distance not provided")
-                    ),
+                    "distance_note": str(item.get("distance_note", "Distance not provided")),
                 }
             )
         else:
-            cleaned_places.append(
+            cleaned_attractions.append(
                 {
                     "name": str(item),
-                    "type": "place",
                     "google_maps_link": "",
                     "distance_note": "Distance not provided",
                 }
             )
+    data["nearby_attractions"] = cleaned_attractions
 
-    data["places"] = cleaned_places
+    cleaned_restaurants = []
+    for item in data["restaurants"][:3]:
+        if isinstance(item, dict):
+            cleaned_restaurants.append(
+                {
+                    "name": str(item.get("name", "Unnamed restaurant")),
+                    "google_maps_link": str(item.get("google_maps_link", "")),
+                    "distance_note": str(item.get("distance_note", "Distance not provided")),
+                }
+            )
+        else:
+            cleaned_restaurants.append(
+                {
+                    "name": str(item),
+                    "google_maps_link": "",
+                    "distance_note": "Distance not provided",
+                }
+            )
+    data["restaurants"] = cleaned_restaurants
 
     cost_breakdown = data["cost_breakdown"]
     data["cost_breakdown"] = {

@@ -19,8 +19,6 @@ async def send_telegram_message(chat_id: int, text: str):
             json={
                 "chat_id": chat_id,
                 "text": text,
-                # Markdown disabled to avoid silent failures
-                # "parse_mode": "Markdown",
                 "disable_web_page_preview": True,
             },
         )
@@ -41,13 +39,11 @@ async def format_and_send(update: Update):
         "preferences": [text],
     }
 
-    # Show typing indicator
     await ptb.bot.send_chat_action(chat_id=chat_id, action="typing")
 
-    # Temporary message
     status_message = await ptb.bot.send_message(
         chat_id=chat_id,
-        text="_Agents are working on your request..._",
+        text="Agents are working on your request...",
     )
 
     try:
@@ -58,19 +54,24 @@ async def format_and_send(update: Update):
             result = r.json()
     except Exception as e:
         try:
-            await ptb.bot.delete_message(chat_id=chat_id, message_id=status_message.message_id)
+            await ptb.bot.delete_message(
+                chat_id=chat_id,
+                message_id=status_message.message_id,
+            )
         except Exception:
             pass
 
         await send_telegram_message(
             chat_id,
-            f"❌ Failed to generate trip.\nError: {str(e)}",
+            f"Failed to generate trip.\nError: {str(e)}",
         )
         return
 
-    # Remove temp message
     try:
-        await ptb.bot.delete_message(chat_id=chat_id, message_id=status_message.message_id)
+        await ptb.bot.delete_message(
+            chat_id=chat_id,
+            message_id=status_message.message_id,
+        )
     except Exception:
         pass
 
@@ -79,7 +80,8 @@ async def format_and_send(update: Update):
     top = reviewer.get("top_3_options", [])
     cost_breakdown = executor.get("cost_breakdown", {})
     travel = executor.get("travel_details", {})
-    places = executor.get("places", [])
+    nearby_attractions = executor.get("nearby_attractions", [])
+    restaurants = executor.get("restaurants", [])
     daily_itinerary = executor.get("daily_itinerary", [])
 
     msg = [
@@ -103,6 +105,53 @@ async def format_and_send(update: Update):
     msg.append(f"- Food: {cost_breakdown.get('food', 'SGD 0')}")
     msg.append(f"- Total: {cost_breakdown.get('total', 'SGD 0')}")
 
+    msg.append("")
+    msg.append("Travel details:")
+
+    flight = travel.get("flight", {})
+    msg.append(f"- Flight suggestion: {flight.get('suggestion', '-')}")
+    msg.append(f"  Price: {flight.get('estimated_price', '-')}")
+    if flight.get("search_link"):
+        msg.append(f"  Link: {flight.get('search_link')}")
+
+    hotel = travel.get("hotel", {})
+    msg.append("")
+    msg.append(f"- Suggested hotel: {hotel.get('name', '-')}")
+    msg.append(f"  Price: {hotel.get('estimated_price', '-')}")
+    msg.append(f"  Location: {hotel.get('location_note', '-')}")
+    if hotel.get("booking_link"):
+        msg.append(f"  Booking: {hotel.get('booking_link')}")
+
+    transport = travel.get("transport", {})
+    msg.append("")
+    msg.append(f"- Local transport: {transport.get('mode', '-')}")
+    msg.append(f"  Cost: {transport.get('estimated_cost', '-')}")
+    msg.append(f"  Notes: {transport.get('notes', '-')}")
+
+    if nearby_attractions:
+        msg.append("")
+        msg.append("Nearby attractions from hotel:")
+        for item in nearby_attractions[:3]:
+            if isinstance(item, dict):
+                msg.append(f"- {item.get('name', 'Attraction')}")
+                msg.append(f"  Time from hotel: {item.get('distance_note', 'Not provided')}")
+                if item.get("google_maps_link"):
+                    msg.append(f"  Maps: {item.get('google_maps_link')}")
+            else:
+                msg.append(f"- {str(item)}")
+
+    if restaurants:
+        msg.append("")
+        msg.append("Nearby food places from hotel:")
+        for item in restaurants[:3]:
+            if isinstance(item, dict):
+                msg.append(f"- {item.get('name', 'Restaurant')}")
+                msg.append(f"  Time from hotel: {item.get('distance_note', 'Not provided')}")
+                if item.get("google_maps_link"):
+                    msg.append(f"  Maps: {item.get('google_maps_link')}")
+            else:
+                msg.append(f"- {str(item)}")
+
     if daily_itinerary:
         msg.append("")
         msg.append("Day-by-day itinerary:")
@@ -111,6 +160,8 @@ async def format_and_send(update: Update):
                 msg.append(f"Day {item.get('day', '-')}: {item.get('title', '')}")
                 if item.get("details"):
                     msg.append(item.get("details"))
+            else:
+                msg.append(f"- {str(item)}")
 
     if top:
         msg.append("")
@@ -120,16 +171,16 @@ async def format_and_send(update: Update):
                 msg.append(f"{i}. {o.get('name', '')}")
                 if o.get("fit"):
                     msg.append(o.get("fit"))
+            else:
+                msg.append(f"{i}. {str(o)}")
 
     final_message = "\n".join(msg)
-
-    # Debug output (VERY IMPORTANT)
     print("FINAL MESSAGE:\n", final_message)
 
     try:
         await send_telegram_message(chat_id, final_message)
     except Exception as e:
-        await send_telegram_message(chat_id, f"⚠️ Send error: {str(e)}")
+        await send_telegram_message(chat_id, f"Send error: {str(e)}")
 
 
 async def on_text(update, context):
@@ -157,6 +208,7 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     global ptb
+
     if ptb is not None:
         await ptb.stop()
         await ptb.shutdown()
@@ -166,6 +218,8 @@ async def shutdown():
 def root():
     return {
         "message": "SEA Travel Planner Telegram bot is running.",
+        "health_url": "/health",
+        "webhook_url": "/telegram/webhook",
     }
 
 
