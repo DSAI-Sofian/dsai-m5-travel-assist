@@ -1,5 +1,56 @@
 import json
+import re
 from app.common.openai_client import get_openai_client, MODEL
+
+
+def _to_number(value, default=0.0):
+    """
+    Convert a value like:
+    - 120
+    - 120.5
+    - "120"
+    - "SGD 120"
+    - "USD 90 (~SGD 120)"
+    into a float.
+    Preference:
+    - If SGD appears in the string, extract the SGD amount
+    - Otherwise extract the first numeric value
+    """
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    if value is None:
+        return float(default)
+
+    text = str(value).strip()
+
+    # Prefer SGD amount if present
+    sgd_match = re.search(r"SGD\s*([0-9]+(?:\.[0-9]+)?)", text, re.IGNORECASE)
+    if sgd_match:
+        try:
+            return float(sgd_match.group(1))
+        except Exception:
+            pass
+
+    # Otherwise take first numeric value
+    num_match = re.search(r"([0-9]+(?:\.[0-9]+)?)", text.replace(",", ""))
+    if num_match:
+        try:
+            return float(num_match.group(1))
+        except Exception:
+            pass
+
+    return float(default)
+
+
+def _format_sgd(value):
+    """
+    Format numeric value into a clean SGD string.
+    """
+    amount = float(value)
+    if amount.is_integer():
+        return f"SGD {int(amount)}"
+    return f"SGD {amount:.2f}"
 
 
 def build_itinerary(req: dict, plan: dict):
@@ -30,18 +81,18 @@ Execute the travel plan and return STRICT JSON in exactly this structure:
   "travel_details": {{
     "flight": {{
       "suggestion": "Airline + route",
-      "estimated_price": "SGD value",
+      "estimated_price": 350,
       "search_link": "Google Flights search URL"
     }},
     "hotel": {{
       "name": "Hotel name",
-      "estimated_price": "SGD value per night",
+      "estimated_price": 420,
       "booking_link": "Booking.com search URL",
       "location_note": "Approximate distance or travel time to main area"
     }},
     "transport": {{
       "mode": "Grab / taxi / train / bus",
-      "estimated_cost": "SGD value",
+      "estimated_cost": 90,
       "notes": "Typical travel time or guidance"
     }}
   }},
@@ -60,21 +111,19 @@ Execute the travel plan and return STRICT JSON in exactly this structure:
     }}
   ],
   "cost_breakdown": {{
-    "flight": "SGD 350",
-    "hotel": "SGD 420",
-    "activities": "SGD 180",
-    "local_transport": "SGD 90",
-    "food": "SGD 120",
-    "total": "SGD 1160"
+    "flight": 350,
+    "hotel": 420,
+    "activities": 180,
+    "local_transport": 90,
+    "food": 120
   }},
   "best_fit_days": 5
 }}
 
 Rules:
 - Return ONLY JSON
-- Always include currency for all costs
-- Prefer SGD where possible
-- If using another currency, clearly label it and include approximate SGD conversion if helpful
+- All cost values must be numeric and in SGD
+- Do NOT include currency symbols inside numeric fields
 - Use realistic travel suggestions and realistic price estimates
 - Flight links must be Google Flights search URLs
 - Hotel links must be Booking.com search URLs
@@ -83,13 +132,15 @@ Rules:
 - Each nearby attraction and restaurant must include:
   name, google_maps_link, distance_note
 - distance_note must describe approximate travel time from the suggested hotel
-  for example: "8 min drive from hotel" or "12 min walk from hotel"
-- cost_breakdown must always include:
-  flight, hotel, activities, local_transport, food, total
+- cost_breakdown must include:
+  flight, hotel, activities, local_transport, food
+- Do NOT calculate or return total
 - daily_itinerary must be a list
 - nearby_attractions must be a list
 - restaurants must be a list
 - best_fit_days must be a number
+- Keep scope tightly aligned to the user's requested destination(s)
+- Do not introduce additional countries or cities unless the user explicitly asks for them
 
 User request:
 {req}
@@ -116,30 +167,29 @@ Planner output:
             "travel_details": {
                 "flight": {
                     "suggestion": "No flight suggestion returned",
-                    "estimated_price": "SGD 0",
+                    "estimated_price": 0,
                     "search_link": "",
                 },
                 "hotel": {
                     "name": "No hotel suggestion returned",
-                    "estimated_price": "SGD 0",
+                    "estimated_price": 0,
                     "booking_link": "",
                     "location_note": "No location note returned",
                 },
                 "transport": {
                     "mode": "No transport suggestion returned",
-                    "estimated_cost": "SGD 0",
+                    "estimated_cost": 0,
                     "notes": "No transport notes returned",
                 },
             },
             "nearby_attractions": [],
             "restaurants": [],
             "cost_breakdown": {
-                "flight": "SGD 0",
-                "hotel": "SGD 0",
-                "activities": "SGD 0",
-                "local_transport": "SGD 0",
-                "food": "SGD 0",
-                "total": "SGD 0",
+                "flight": 0,
+                "hotel": 0,
+                "activities": 0,
+                "local_transport": 0,
+                "food": 0,
             },
             "best_fit_days": req.get("duration_days", 0),
             "raw_output": content,
@@ -174,21 +224,25 @@ Planner output:
     if not isinstance(transport, dict):
         transport = {}
 
+    flight_price_num = _to_number(flight.get("estimated_price", 0))
+    hotel_price_num = _to_number(hotel.get("estimated_price", 0))
+    transport_price_num = _to_number(transport.get("estimated_cost", 0))
+
     data["travel_details"] = {
         "flight": {
             "suggestion": str(flight.get("suggestion", "No flight suggestion returned")),
-            "estimated_price": str(flight.get("estimated_price", "SGD 0")),
+            "estimated_price": _format_sgd(flight_price_num),
             "search_link": str(flight.get("search_link", "")),
         },
         "hotel": {
             "name": str(hotel.get("name", "No hotel suggestion returned")),
-            "estimated_price": str(hotel.get("estimated_price", "SGD 0")),
+            "estimated_price": _format_sgd(hotel_price_num),
             "booking_link": str(hotel.get("booking_link", "")),
             "location_note": str(hotel.get("location_note", "No location note returned")),
         },
         "transport": {
             "mode": str(transport.get("mode", "No transport suggestion returned")),
-            "estimated_cost": str(transport.get("estimated_cost", "SGD 0")),
+            "estimated_cost": _format_sgd(transport_price_num),
             "notes": str(transport.get("notes", "No transport notes returned")),
         },
     }
@@ -233,14 +287,29 @@ Planner output:
             )
     data["restaurants"] = cleaned_restaurants
 
-    cost_breakdown = data["cost_breakdown"]
+    raw_costs = data["cost_breakdown"]
+
+    flight_cost = _to_number(raw_costs.get("flight", 0))
+    hotel_cost = _to_number(raw_costs.get("hotel", 0))
+    activities_cost = _to_number(raw_costs.get("activities", 0))
+    local_transport_cost = _to_number(raw_costs.get("local_transport", 0))
+    food_cost = _to_number(raw_costs.get("food", 0))
+
+    total_cost = (
+        flight_cost
+        + hotel_cost
+        + activities_cost
+        + local_transport_cost
+        + food_cost
+    )
+
     data["cost_breakdown"] = {
-        "flight": str(cost_breakdown.get("flight", "SGD 0")),
-        "hotel": str(cost_breakdown.get("hotel", "SGD 0")),
-        "activities": str(cost_breakdown.get("activities", "SGD 0")),
-        "local_transport": str(cost_breakdown.get("local_transport", "SGD 0")),
-        "food": str(cost_breakdown.get("food", "SGD 0")),
-        "total": str(cost_breakdown.get("total", "SGD 0")),
+        "flight": _format_sgd(flight_cost),
+        "hotel": _format_sgd(hotel_cost),
+        "activities": _format_sgd(activities_cost),
+        "local_transport": _format_sgd(local_transport_cost),
+        "food": _format_sgd(food_cost),
+        "total": _format_sgd(total_cost),
     }
 
     try:
