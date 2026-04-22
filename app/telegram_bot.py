@@ -83,7 +83,7 @@ async def format_and_send(update: Update):
     msg = [
         "Trip plan ready",
         "",
-        f"Destination: {', '.join(payload.get('destinations', []))}",
+        f"Destination: {', '.join(payload.get('destinations', [])) if payload.get('destinations') else 'Not detected'}",
         f"Duration: {payload.get('duration_days')} days",
         f"Budget fit: {'Yes' if reviewer.get('within_budget') else 'No'}",
         f"Estimated cost: SGD {reviewer.get('estimated_total')}",
@@ -110,7 +110,7 @@ async def format_and_send(update: Update):
     msg.append(f"- Flight suggestion: {flight.get('suggestion', '-')}")
     msg.append(f"  Price: {flight.get('estimated_price', '-')}")
     if flight.get("search_link"):
-        msg.append(f"  Link: {flight.get('search_link')}")
+        msg.append(f"  Search: {flight.get('search_link')}")
 
     hotel = travel.get("hotel", {})
     msg.append("")
@@ -118,7 +118,7 @@ async def format_and_send(update: Update):
     msg.append(f"  Price: {hotel.get('estimated_price', '-')}")
     msg.append(f"  Location: {hotel.get('location_note', '-')}")
     if hotel.get("booking_link"):
-        msg.append(f"  Booking: {hotel.get('booking_link')}")
+        msg.append(f"  Booking search: {hotel.get('booking_link')}")
 
     transport = travel.get("transport", {})
     msg.append("")
@@ -135,8 +135,8 @@ async def format_and_send(update: Update):
                 msg.append(
                     f"  Time from hotel: {item.get('distance_note', 'Not provided')}"
                 )
-                if item.get("google_maps_link"):
-                    msg.append(f"  Maps: {item.get('google_maps_link')}")
+                if item.get("search_link"):
+                    msg.append(f"  Search: {item.get('search_link')}")
             else:
                 msg.append(f"- {str(item)}")
 
@@ -149,8 +149,8 @@ async def format_and_send(update: Update):
                 msg.append(
                     f"  Time from hotel: {item.get('distance_note', 'Not provided')}"
                 )
-                if item.get("google_maps_link"):
-                    msg.append(f"  Maps: {item.get('google_maps_link')}")
+                if item.get("search_link"):
+                    msg.append(f"  Search: {item.get('search_link')}")
             else:
                 msg.append(f"- {str(item)}")
 

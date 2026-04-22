@@ -1,4 +1,5 @@
 import re
+from datetime import date, timedelta
 from app.common.destination_normalizer import normalize_destinations
 
 
@@ -8,10 +9,13 @@ KNOWN_DESTINATIONS = [
     "bandung",
     "jakarta",
     "bali",
+    "denpasar",
     "penang",
+    "pg",
     "malacca",
     "melaka",
     "singapore",
+    "sg",
     "johor bahru",
     "jb",
     "yogyakarta",
@@ -24,7 +28,24 @@ KNOWN_DESTINATIONS = [
     "hcm",
     "saigon",
     "hanoi",
+    "sabah",
+    "kota kinabalu",
+    "kk",
+    "sandakan",
+    "tawau",
 ]
+
+
+def _infer_dates(duration_days: int) -> tuple[str, str]:
+    """
+    Infer simple travel dates based on today's date.
+    Start = 14 days from today
+    End = start + duration_days
+    """
+    today = date.today()
+    start = today + timedelta(days=14)
+    end = start + timedelta(days=max(duration_days, 1))
+    return start.isoformat(), end.isoformat()
 
 
 def parse_trip_request(text: str) -> dict:
@@ -32,7 +53,7 @@ def parse_trip_request(text: str) -> dict:
     Parse simple free-text travel requests into structured fields.
 
     Examples:
-    - '4 days Bandung budget 1800'
+    - '4 days Sabah budget 1500'
     - '3 days KL budget 600 shopping'
     - '5 days Penang under 1200 food and culture'
     """
@@ -80,7 +101,6 @@ def parse_trip_request(text: str) -> dict:
         destinations = normalize_destinations(found_destinations)
 
     # ---- Preferences extraction ----
-    # Remove detected structured pieces, keep meaningful remainder
     cleaned = lowered
 
     cleaned = re.sub(r"\b\d+\s*(day|days|d)\b", " ", cleaned)
@@ -99,13 +119,15 @@ def parse_trip_request(text: str) -> dict:
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
 
     if cleaned:
-        # Split by commas or "and"
         parts = re.split(r",| and ", cleaned)
         preferences = [p.strip() for p in parts if p.strip()]
 
-    # Fallback if no destination found
+    # Safer fallback: if nothing detected, keep user's raw text as preference
+    # but do NOT force Kuala Lumpur
     if not destinations:
-        destinations = ["Kuala Lumpur"]
+        destinations = []
+
+    start_date, end_date = _infer_dates(duration_days)
 
     return {
         "origin": "Singapore",
@@ -114,4 +136,6 @@ def parse_trip_request(text: str) -> dict:
         "duration_days": duration_days,
         "travelers": 1,
         "preferences": preferences if preferences else [raw],
+        "start_date": start_date,
+        "end_date": end_date,
     }
