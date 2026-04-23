@@ -13,7 +13,8 @@ def plan_trip(req: dict[str, Any]) -> dict[str, Any]:
     intent = interpret_trip_intent(req)
     constraints = build_planner_constraints()
     constraints_block = format_constraints_for_prompt(constraints)
-    user_request = intent["user_request"]
+    # FIX: preserve original behavior
+    user_request = req
 
     client = get_openai_client()
 
