@@ -2,6 +2,7 @@ import json
 import re
 from urllib.parse import quote_plus
 from app.common.openai_client import get_openai_client, MODEL
+from app.pricing.engine import estimate_trip_costs
 
 
 def _to_number(value, default=0.0):
@@ -304,6 +305,8 @@ Planner output (JSON):
     data["restaurants"] = cleaned_restaurants
 
     raw_costs = data["cost_breakdown"]
+    required_cost_keys = {"flight", "hotel", "activities", "local_transport", "food"}
+    has_missing_cost_fields = not required_cost_keys.issubset(set(raw_costs.keys()))
 
     flight_cost = _to_number(raw_costs.get("flight", 0))
     hotel_cost = _to_number(raw_costs.get("hotel", 0))
@@ -319,6 +322,25 @@ Planner output (JSON):
         + food_cost
     )
 
+    if has_missing_cost_fields or total_cost <= 0:
+        estimated = estimate_trip_costs(
+            destination=primary_destination,
+            duration_days=req.get("duration_days", 1),
+            travel_style=req.get("travel_style"),
+        )
+        flight_cost = _to_number(estimated.get("flight", 0))
+        hotel_cost = _to_number(estimated.get("hotel", 0))
+        activities_cost = _to_number(estimated.get("activities", 0))
+        local_transport_cost = _to_number(estimated.get("local_transport", 0))
+        food_cost = _to_number(estimated.get("food", 0))
+        total_cost = _to_number(estimated.get("total", 0))
+    
+    # Sync travel_details with pricing engine if fallback used
+    if has_missing_cost_fields or total_cost <= 0:
+        data["travel_details"]["flight"]["estimated_price"] = _format_sgd(flight_cost)
+        data["travel_details"]["hotel"]["estimated_price"] = _format_sgd(hotel_cost)
+        data["travel_details"]["transport"]["estimated_cost"] = _format_sgd(local_transport_cost)
+        
     data["cost_breakdown"] = {
         "flight": _format_sgd(flight_cost),
         "hotel": _format_sgd(hotel_cost),
