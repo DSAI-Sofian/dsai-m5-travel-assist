@@ -99,6 +99,8 @@ def run_workflow(req: dict[str, Any]) -> dict[str, Any]:
                 failed_stage=stage_name,
             )
         
+        print(f"[workflow] stage={stage_name} result_keys={list(result.keys())}")
+        
         stage_outputs[stage_name] = result
         
     reviewer = stage_outputs["reviewer"]
