@@ -4,6 +4,7 @@ from urllib.parse import quote_plus
 from app.common.openai_client import get_openai_client, MODEL
 from app.pricing.engine import estimate_trip_costs
 from app.intelligence.realism import assess_trip_realism
+from app.intelligence.personalization import build_personalization_profile
 
 
 def _to_number(value, default=0.0):
@@ -58,6 +59,10 @@ def _booking_search_link(destination: str, start_date: str, end_date: str) -> st
 def build_itinerary(req: dict, plan: dict):
     client = get_openai_client()
 
+    profile = build_personalization_profile(
+        preferences=req.get("preferences")
+    )
+    
     destinations = req.get("destinations", [])
     origin = req.get("origin", "Singapore")
     destination_text = ", ".join(destinations) if destinations else "requested destination"
@@ -162,8 +167,6 @@ Planner output (JSON):
 
     content = resp.choices[0].message.content
 
-    print("[executor] raw LLM output:", content[:500])
-
     try:
         data = json.loads(content)
     except Exception:
@@ -231,7 +234,7 @@ Planner output (JSON):
     hotel_price_num = _to_number(hotel.get("estimated_price", 0))
     transport_price_num = _to_number(transport.get("estimated_cost", 0))
 
-    primary_destination = destinations[0] if destinations else "destination"
+    primary_destination = destinations[0] if destinations else "requested destination"
 
     data["travel_details"] = {
         "flight": {
@@ -323,11 +326,13 @@ Planner output (JSON):
         + food_cost
     )
 
-    if has_missing_cost_fields or total_cost <= 0:
+    used_pricing_fallback = has_missing_cost_fields or total_cost <= 0
+
+    if used_pricing_fallback:
         estimated = estimate_trip_costs(
             destination=primary_destination,
             duration_days=req.get("duration_days", 1),
-            travel_style=req.get("travel_style"),
+            travel_style=profile.get("travel_style"),
         )
         flight_cost = _to_number(estimated.get("flight", 0))
         hotel_cost = _to_number(estimated.get("hotel", 0))
@@ -335,9 +340,8 @@ Planner output (JSON):
         local_transport_cost = _to_number(estimated.get("local_transport", 0))
         food_cost = _to_number(estimated.get("food", 0))
         total_cost = _to_number(estimated.get("total", 0))
-    
-    # Sync travel_details with pricing engine if fallback used
-    if has_missing_cost_fields or total_cost <= 0:
+
+    if used_pricing_fallback:
         data["travel_details"]["flight"]["estimated_price"] = _format_sgd(flight_cost)
         data["travel_details"]["hotel"]["estimated_price"] = _format_sgd(hotel_cost)
         data["travel_details"]["transport"]["estimated_cost"] = _format_sgd(local_transport_cost)
@@ -368,5 +372,6 @@ Planner output (JSON):
 
     # Override with realism recommendation
     data["best_fit_days"] = realism.get("recommended_best_fit_days", llm_days)
-
+    data["personalization"] = profile
+    
     return {"agent": "executor", **data}
