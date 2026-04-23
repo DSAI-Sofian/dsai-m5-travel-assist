@@ -3,6 +3,7 @@ import re
 from urllib.parse import quote_plus
 from app.common.openai_client import get_openai_client, MODEL
 from app.pricing.engine import estimate_trip_costs
+from app.intelligence.realism import assess_trip_realism
 
 
 def _to_number(value, default=0.0):
@@ -351,10 +352,21 @@ Planner output (JSON):
     }
 
     try:
-        data["best_fit_days"] = int(
-            data.get("best_fit_days", req.get("duration_days", 0))
-        )
+        llm_days = int(data.get("best_fit_days", req.get("duration_days", 0)))
+        
     except Exception:
-        data["best_fit_days"] = req.get("duration_days", 0)
+        llm_days = req.get("duration_days", 0)
+
+    # Override with realism recommendation
+    data["best_fit_days"] = realism.get("recommended_best_fit_days", llm_days)
+
+    realism = assess_trip_realism(
+        destination=primary_destination,
+        duration_days=req.get("duration_days", 1),
+        daily_itinerary=data.get("daily_itinerary", []),
+        travel_details=data.get("travel_details"),
+    )
+
+    data["realism"] = realism
 
     return {"agent": "executor", **data}
