@@ -7,7 +7,7 @@ app = FastAPI(title="SEA Travel Planner")
 class TripRequest(BaseModel):
     origin: str
     destinations: list[str]
-    budget: float
+    budget: float | None = None
     duration_days: int
     travelers: int = 1
     preferences: list[str] = []

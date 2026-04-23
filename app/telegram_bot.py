@@ -80,12 +80,19 @@ async def format_and_send(update: Update):
     restaurants = executor.get("restaurants", [])
     daily_itinerary = executor.get("daily_itinerary", [])
 
+    within_budget = reviewer.get("within_budget")
+
+    if within_budget is None:
+        budget_fit_text = "Not assessed"
+    else:
+        budget_fit_text = "Yes" if within_budget else "No"
+
     msg = [
         "Trip plan ready",
         "",
         f"Destination: {', '.join(payload.get('destinations', [])) if payload.get('destinations') else 'Not detected'}",
         f"Duration: {payload.get('duration_days')} days",
-        f"Budget fit: {'Yes' if reviewer.get('within_budget') else 'No'}",
+        f"Budget fit: {budget_fit_text}",
         f"Estimated cost: SGD {reviewer.get('estimated_total')}",
     ]
 
