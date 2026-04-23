@@ -16,11 +16,24 @@ _PLANNER_RULES = [
 def build_planner_constraints() -> list[str]:
     """
     Return hard planner constraints.
+    """
+    return list(_PLANNER_RULES)
+
+
+def format_constraints_for_prompt(constraints: list[str]) -> str:
+    """
+    Format planner constraints into bullet style for the prompt.
+    """
+    return "\n".join(f"- {rule}" for rule in constraints)
+
+
+def build_planner_constraints() -> list[str]:
+    """
+    Return hard planner constraints.
 
     This intentionally preserves the current planner constraint set and does not
     introduce new business logic.
     """
-    _ = intent
     return list(_PLANNER_RULES)
 
 
