@@ -13,7 +13,7 @@ _PLANNER_RULES = [
 ]
 
 
-def build_planner_constraints():
+def build_planner_constraints() -> list[str]:
     """
     Return hard planner constraints.
 

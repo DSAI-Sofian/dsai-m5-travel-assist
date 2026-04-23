@@ -1,7 +1,7 @@
 from typing import Any, Mapping
 
 
-def interpret_trip_intent(req):
+def interpret_trip_intent(req: Mapping[str, Any]) -> dict[str, Any]:
     """
     Thin intent wrapper for planner inputs.
 
@@ -9,4 +9,3 @@ def interpret_trip_intent(req):
     while making intent interpretation a separate module for future expansion.
     """
     return dict(req)
-

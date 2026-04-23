@@ -80,9 +80,9 @@ def run_workflow(req: dict[str, Any]) -> dict[str, Any]:
                     failed_stage=stage_name,
                 )
 
-        except Exception:
+        except Exception as error:
             # Safe logging only
-            print(f"[workflow] stage={stage_name} failed")
+            print(f"[workflow] stage={stage_name} failed error={repr(error)}")
 
             return _build_failure_response(
                 normalized_req=normalized_req,
