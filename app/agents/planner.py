@@ -1,8 +1,20 @@
 import json
+from typing import Any
+
+from app.agents.core.constraint_agent import (
+    build_planner_constraints,
+    format_constraints_for_prompt,
+)
+from app.agents.core.intent_agent import interpret_trip_intent
 from app.common.openai_client import get_openai_client, MODEL
 
 
-def plan_trip(req: dict):
+def plan_trip(req: dict[str, Any]) -> dict[str, Any]:
+    intent = interpret_trip_intent(req)
+    constraints = build_planner_constraints()
+    constraints_block = format_constraints_for_prompt(constraints)
+    user_request = intent["user_request"]
+
     client = get_openai_client()
 
     messages = [
@@ -33,17 +45,10 @@ Plan the trip and return STRICT JSON in exactly this structure:
 }}
 
 Rules:
-- Return ONLY JSON
-- Keep the trip scope tightly aligned to the user's requested destination(s)
-- Do NOT introduce extra cities, regions, or countries unless the user explicitly asks for them
-- If the user mentions only one destination, keep the trip focused on that destination only
-- If the user mentions multiple destinations, you may plan across those destinations only
-- Do NOT assume cross-border travel unless clearly requested
-- Travel modes should be realistic for the requested destination(s)
-- Budget notes should reflect the user's stated budget
+{constraints_block}
 
 User request:
-{req}
+{user_request}
 """,
         },
     ]
