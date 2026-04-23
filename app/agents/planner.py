@@ -10,7 +10,6 @@ from app.common.openai_client import get_openai_client, MODEL
 
 
 def plan_trip(req: dict[str, Any]) -> dict[str, Any]:
-    intent = interpret_trip_intent(req)
     constraints = build_planner_constraints()
     constraints_block = format_constraints_for_prompt(constraints)
     # FIX: preserve original behavior
