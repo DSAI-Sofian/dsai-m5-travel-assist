@@ -51,17 +51,19 @@ def _infer_dates(duration_days: int) -> tuple[str, str]:
 def parse_trip_request(text: str) -> dict:
     """
     Parse simple free-text travel requests into structured fields.
+    Budget is optional; if not provided, it will be None.
 
     Examples:
     - '4 days Sabah budget 1500'
     - '3 days KL budget 600 shopping'
     - '5 days Penang under 1200 food and culture'
+    - '2 days KL'
     """
     raw = (text or "").strip()
     lowered = raw.lower()
 
     duration_days = 5
-    budget = 1200
+    budget = None
     destinations = []
     preferences = []
 

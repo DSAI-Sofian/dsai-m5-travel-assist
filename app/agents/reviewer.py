@@ -120,20 +120,24 @@ Executor output:
     except Exception:
         estimated_total = 0.0
 
-    try:
-        budget = float(req.get("budget", 0))
-    except Exception:
-        budget = 0.0
+    budget_raw = req.get("budget", None)
 
-    within_budget = estimated_total <= budget
+    if budget_raw is None:
+        budget = None
+    else:
+        try:
+            budget = float(budget_raw)
+        except Exception:
+            budget = None
 
     data["estimated_total"] = estimated_total
-    data["within_budget"] = within_budget
-    data["accuracy_check"] = str(
-        data.get("accuracy_check", "No accuracy check provided.")
-    )
 
-    if within_budget:
+    if budget is None:
+        data["user_message"] = (
+            f"Estimated total cost is SGD {estimated_total:.0f}. "
+            f"No budget was provided."
+        )
+    elif data.get("within_budget"):
         data["user_message"] = (
             f"Your trip looks feasible. The estimated total of SGD {estimated_total:.0f} "
             f"is within your budget of SGD {budget:.0f}."
