@@ -146,8 +146,8 @@ Rules:
 User request:
 {req}
 
-Planner output:
-{plan}
+Planner output (JSON):
+{json.dumps(plan)}
 """,
         },
     ]
@@ -159,6 +159,8 @@ Planner output:
     )
 
     content = resp.choices[0].message.content
+
+    print("[executor] raw LLM output:", content[:500])
 
     try:
         data = json.loads(content)
