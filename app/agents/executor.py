@@ -351,15 +351,6 @@ Planner output (JSON):
         "total": _format_sgd(total_cost),
     }
 
-    try:
-        llm_days = int(data.get("best_fit_days", req.get("duration_days", 0)))
-        
-    except Exception:
-        llm_days = req.get("duration_days", 0)
-
-    # Override with realism recommendation
-    data["best_fit_days"] = realism.get("recommended_best_fit_days", llm_days)
-
     realism = assess_trip_realism(
         destination=primary_destination,
         duration_days=req.get("duration_days", 1),
@@ -368,5 +359,14 @@ Planner output (JSON):
     )
 
     data["realism"] = realism
+    
+    try:
+        llm_days = int(data.get("best_fit_days", req.get("duration_days", 0)))
+        
+    except Exception:
+        llm_days = req.get("duration_days", 0)
+
+    # Override with realism recommendation
+    data["best_fit_days"] = realism.get("recommended_best_fit_days", llm_days)
 
     return {"agent": "executor", **data}
