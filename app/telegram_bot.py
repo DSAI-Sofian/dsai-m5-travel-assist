@@ -142,11 +142,15 @@ async def format_and_send(update: Update):
     else:
         budget_fit_text = "Yes" if within_budget else "No"
 
+    request_data = result.get("request", payload)
+
     dest_text = (
-        ", ".join(payload.get("destinations", []))
-        if payload.get("destinations")
+        ", ".join(request_data.get("display_destinations", []))
+        if request_data.get("display_destinations")
+        else ", ".join(request_data.get("destinations", []))
+        if request_data.get("destinations")
         else "Not detected"
-    )
+)
 
     estimated_total = reviewer.get("estimated_total")
     estimated_total_text = (
@@ -159,7 +163,7 @@ async def format_and_send(update: Update):
         "Trip plan ready",
         "",
         f"📍 Destination: {dest_text}",
-        f"🗓 Duration: {payload.get('duration_days')} days",
+        f"🗓 Duration: {request_data.get('duration_days')} days",
         f"💰 Budget fit: {budget_fit_text}",
         f"💵 Estimated cost: {estimated_total_text}",
         "",

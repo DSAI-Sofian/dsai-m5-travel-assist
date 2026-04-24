@@ -2,10 +2,9 @@ from copy import deepcopy
 from typing import Any
 
 from app.agents.registry import get_agent_handler
-from app.common.destination_normalizer import normalize_destinations
 from app.common.guardrails import execute_with_retry
 
-from app.intelligence.destination_mapper import resolve_destinations
+from app.intelligence.place_resolver import resolve_places
 
 
 AGENT_PIPELINE = ("planner", "executor", "reviewer")
@@ -45,9 +44,10 @@ def run_workflow(req: dict[str, Any]) -> dict[str, Any]:
     elif not isinstance(destinations, list):
         destinations = []
 
-    resolved = resolve_destinations(destinations)
-    
+    resolved = resolve_places(destinations)
+
     normalized_req["destinations"] = resolved["resolved_destinations"]
+    normalized_req["display_destinations"] = resolved["display_destinations"]
     normalized_req["destination_metadata"] = resolved["metadata"]
 
     stage_outputs: dict[str, dict[str, Any]] = {
