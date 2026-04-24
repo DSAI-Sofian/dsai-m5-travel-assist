@@ -4,6 +4,13 @@ from app.common.destination_normalizer import normalize_destinations
 
 
 KNOWN_DESTINATIONS = [
+    "east malaysia",
+    "west malaysia",
+    "peninsular malaysia",
+    "malaysia",
+    "indonesia",
+    "thailand",
+    "vietnam",
     "kuala lumpur",
     "kl",
     "bandung",
