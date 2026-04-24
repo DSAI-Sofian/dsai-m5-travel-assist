@@ -132,20 +132,29 @@ Executor output:
 
     data["estimated_total"] = estimated_total
 
-    if budget is None:
-        data["user_message"] = (
-            f"Estimated total cost is SGD {estimated_total:.0f}. "
-            f"No budget was provided."
+    if budget is not None and estimated_total > budget:
+        user_message = (
+            f"Your estimated total of SGD {estimated_total:.0f} exceeds your budget of SGD {budget:.0f}. "
+            "Consider reducing flights, hotel, or activities."
         )
-    elif data.get("within_budget"):
-        data["user_message"] = (
-            f"Your trip looks feasible. The estimated total of SGD {estimated_total:.0f} "
-            f"is within your budget of SGD {budget:.0f}."
+    elif budget is not None:
+        user_message = (
+            f"Your estimated total of SGD {estimated_total:.0f} is within your budget of SGD {budget:.0f}."
         )
     else:
-        data["user_message"] = (
-            f"Your estimated total of SGD {estimated_total:.0f} exceeds your budget of "
-            f"SGD {budget:.0f}. Consider reducing flights, hotel, or activities."
+        user_message = (
+            f"Your estimated total is SGD {estimated_total:.0f}. No budget was provided for comparison."
         )
 
     return {"agent": "reviewer", **data}
+
+
+async def run_reviewer(
+    parsed_request: dict,
+    planner_output: dict,
+    executor_output: dict,
+) -> dict:
+    """
+    Day 3 compatibility wrapper.
+    """
+    return review_options(parsed_request, planner_output, executor_output)

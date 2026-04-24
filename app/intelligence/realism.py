@@ -129,3 +129,18 @@ def assess_trip_realism(
         "notes": notes,
         "recommended_best_fit_days": recommended_best_fit_days,
     }
+
+
+def assess_realism(parsed_request: dict, executor_output: dict) -> dict:
+    """
+    Day 3 compatibility wrapper.
+    """
+    destinations = parsed_request.get("display_destinations") or parsed_request.get("destinations") or ["Unknown"]
+    destination = destinations[0] if isinstance(destinations, list) else str(destinations)
+
+    return assess_trip_realism(
+        destination=destination,
+        duration_days=parsed_request.get("duration_days", 3),
+        daily_itinerary=executor_output.get("itinerary", []),
+        travel_details=executor_output.get("travel_details", {}),
+    )

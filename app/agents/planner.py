@@ -84,3 +84,13 @@ User request:
     data["summary"] = str(data.get("summary", "Trip planning summary unavailable."))
 
     return {"agent": "planner", **data}
+
+
+async def run_planner(parsed_request):
+    """
+    Day 3 compatibility wrapper.
+
+    Existing planner function is plan_trip().
+    This wrapper preserves the new workflow.py contract.
+    """
+    return plan_trip(parsed_request)

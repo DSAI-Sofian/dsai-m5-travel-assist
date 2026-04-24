@@ -118,3 +118,12 @@ def build_personalization_profile(
         "hotel_tier": hotel_tier,
         "activity_bias": activity_bias,
     }
+
+
+def personalize_request(parsed_request: dict) -> dict:
+    """
+    Day 3 compatibility wrapper.
+    """
+    return build_personalization_profile(
+        preferences=parsed_request.get("preferences", [])
+    )

@@ -375,3 +375,10 @@ Planner output (JSON):
     data["personalization"] = profile
     
     return {"agent": "executor", **data}
+
+
+async def run_executor(parsed_request: dict, planner_output: dict) -> dict:
+    """
+    Day 3 compatibility wrapper.
+    """
+    return build_itinerary(parsed_request, planner_output)

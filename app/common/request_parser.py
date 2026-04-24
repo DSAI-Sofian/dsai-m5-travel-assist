@@ -148,3 +148,13 @@ def parse_trip_request(text: str) -> dict:
         "start_date": start_date,
         "end_date": end_date,
     }
+
+
+def parse_request(raw_request: str) -> dict:
+    """
+    Day 3 compatibility wrapper.
+
+    Existing parser function is parse_trip_request().
+    This wrapper preserves the new workflow.py contract.
+    """
+    return parse_trip_request(raw_request)

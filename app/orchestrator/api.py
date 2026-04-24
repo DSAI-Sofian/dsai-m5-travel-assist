@@ -12,6 +12,31 @@ class TripRequest(BaseModel):
     travelers: int = 1
     preferences: list[str] = []
 
+def build_raw_request(req: TripRequest) -> str:
+    """
+    Convert structured API input into a natural language request
+    for compatibility with request_parser.
+    """
+
+    parts = []
+
+    if req.duration_days:
+        parts.append(f"{req.duration_days} days")
+
+    if req.destinations:
+        parts.append(" ".join(req.destinations))
+
+    if req.budget:
+        parts.append(f"budget S${int(req.budget)}")
+
+    if req.preferences:
+        parts.append(" ".join(req.preferences))
+
+    if req.travelers > 1:
+        parts.append(f"for {req.travelers} people")
+
+    return " ".join(parts)
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -25,5 +50,8 @@ def root():
     }
 
 @app.post("/plan")
-def plan(req: TripRequest):
-    return run_workflow(req.model_dump())
+async def plan(req: TripRequest):
+    # Convert structured request → natural language string
+    raw_request = build_raw_request(req)
+
+    return await run_workflow(raw_request)

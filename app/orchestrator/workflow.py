@@ -1,118 +1,336 @@
-from copy import deepcopy
-from typing import Any
+from __future__ import annotations
 
-from app.agents.registry import get_agent_handler
-from app.common.guardrails import execute_with_retry
+import inspect
+from typing import Any, Awaitable, Callable
 
+from app.agents.executor import run_executor
+from app.agents.planner import run_planner
+from app.agents.variant import variant_agent
+from app.agents.ranking import ranking_agent
+from app.agents.reviewer import run_reviewer
+from app.agents.router import routing_agent
+from app.common.request_parser import parse_request
+from app.intelligence.personalization import personalize_request
 from app.intelligence.place_resolver import resolve_places
+from app.intelligence.realism import assess_realism
+from app.orchestrator.state import AgentState, add_error, add_trace, create_initial_state
 
 
-AGENT_PIPELINE = ("planner", "executor", "reviewer")
+MAX_AGENT_RETRIES = 2
 
 
-def _build_failure_response(
-    normalized_req: dict[str, Any],
-    stage_outputs: dict[str, dict[str, Any]],
-    failed_stage: str,
-) -> dict[str, Any]:
-    reviewer = stage_outputs.get("reviewer", {})
-    if not isinstance(reviewer, dict):
-        reviewer = {}
-
-    top_3 = reviewer.get("top_3_options", [])
-    if not isinstance(top_3, list):
-        top_3 = []
-
-    return {
-        "status": "fallback",
-        "message": "Unable to generate full plan, showing best available result.",
-        "failed_stage": failed_stage,
-        "request": normalized_req,
-        "planner": stage_outputs.get("planner", {}),
-        "executor": stage_outputs.get("executor", {}),
-        "reviewer": reviewer,
-        "top_3_options": top_3,
-    }
+DEFAULT_AGENT_PIPELINE = [
+    "request_parser",
+    "routing",
+    "place_resolver",
+    "personalization",
+    "planner",
+    "executor",
+    "realism",
+    "variant",
+    "ranking",
+    "reviewer",
+]
 
 
-def run_workflow(req: dict[str, Any]) -> dict[str, Any]:
-    normalized_req = deepcopy(req)
+async def maybe_await(result: Any) -> Any:
+    if inspect.isawaitable(result):
+        return await result
+    return result
 
-    destinations = normalized_req.get("destinations", [])
-    if isinstance(destinations, str):
-        destinations = [destinations]
-    elif not isinstance(destinations, list):
-        destinations = []
 
-    resolved = resolve_places(destinations)
+async def request_parser_agent(state: AgentState) -> AgentState:
+    raw_request = state.get("raw_request", "")
+    parsed = parse_request(raw_request)
 
-    normalized_req["destinations"] = resolved["resolved_destinations"]
-    normalized_req["display_destinations"] = resolved["display_destinations"]
-    normalized_req["destination_metadata"] = resolved["metadata"]
+    state["parsed_request"] = parsed
+    state["destinations"] = parsed.get("destinations", [])
+    state["display_destinations"] = parsed.get("destinations", [])
 
-    stage_outputs: dict[str, dict[str, Any]] = {
-        "planner": {},
-        "executor": {},
-        "reviewer": {},
-    }
+    return add_trace(state, "request_parser completed")
 
-    for stage_name in AGENT_PIPELINE:
-        handler = get_agent_handler(stage_name)
 
+async def place_resolver_agent(state: AgentState) -> AgentState:
+    parsed = state.get("parsed_request", {})
+    raw_destinations = parsed.get("destinations", [])
+
+    resolved = resolve_places(raw_destinations)
+
+    state["destinations"] = resolved.get("destinations", raw_destinations)
+    state["display_destinations"] = resolved.get("display_destinations", raw_destinations)
+    state["destination_metadata"] = resolved.get("destination_metadata", [])
+
+    parsed["destinations"] = state["destinations"]
+    parsed["display_destinations"] = state["display_destinations"]
+    parsed["destination_metadata"] = state["destination_metadata"]
+
+    state["parsed_request"] = parsed
+
+    return add_trace(state, "place_resolver completed")
+
+
+async def personalization_agent(state: AgentState) -> AgentState:
+    parsed = state.get("parsed_request", {})
+
+    personalization = personalize_request(parsed)
+
+    state["personalization"] = personalization
+    parsed["personalization"] = personalization
+
+    state["parsed_request"] = parsed
+
+    return add_trace(state, "personalization completed")
+
+
+async def planner_agent(state: AgentState) -> AgentState:
+    parsed = state.get("parsed_request", {})
+    planner_output = await maybe_await(run_planner(parsed))
+
+    state["planner_output"] = planner_output
+
+    return add_trace(state, "planner completed")
+
+
+async def executor_agent(state: AgentState) -> AgentState:
+    parsed = state.get("parsed_request", {})
+    planner_output = state.get("planner_output", {})
+
+    executor_output = await maybe_await(run_executor(parsed, planner_output))
+
+    state["executor_output"] = executor_output
+
+    return add_trace(state, "executor completed")
+
+
+async def realism_agent(state: AgentState) -> AgentState:
+    parsed = state.get("parsed_request", {})
+    executor_output = state.get("executor_output", {})
+
+    realism = assess_realism(parsed, executor_output)
+
+    state["realism"] = realism
+    executor_output["realism"] = realism
+
+    state["executor_output"] = executor_output
+
+    return add_trace(state, "realism completed")
+
+
+async def reviewer_agent(state: AgentState) -> AgentState:
+    parsed = state.get("parsed_request", {})
+    planner_output = state.get("planner_output", {})
+    executor_output = state.get("executor_output", {})
+
+    reviewer_output = await maybe_await(
+        run_reviewer(
+            parsed_request=parsed,
+            planner_output=planner_output,
+            executor_output=executor_output,
+        )
+    )
+
+    ranking = state.get("ranking_output", {})
+    variants = state.get("plan_variants", [])
+    selected = state.get("selected_variant", {})
+
+    reviewer_output["ranking"] = ranking
+    state["reviewer_output"] = reviewer_output
+
+    score_pct = ranking.get("score_pct")
+    selected_key = selected.get("variant_key")
+
+    base_message = (
+        reviewer_output.get("message")
+        or reviewer_output.get("user_message")
+        or "I prepared your travel plan, but the final summary could not be formatted correctly."
+    )
+
+    if selected_key == "comfort" and "budget-friendly" in base_message.lower():
+        base_message = base_message.replace(
+            "budget-friendly adventure",
+            "comfortable and well-paced adventure",
+        )
+
+    explanation_parts = []
+
+    if selected:
+        label = selected.get("variant_label", "selected plan")
+        explanation_parts.append(f"We selected the {label} based on overall best fit.")
+
+    alternatives = [
+        variant
+        for variant in variants
+        if variant.get("variant_key") != selected.get("variant_key")
+    ]
+
+    alt_lines = []
+
+    for alt in alternatives[:2]:
+        alt_label = alt.get("variant_label")
+        alt_score = alt.get("ranking", {}).get("score_pct")
+        alt_total = alt.get("ranking", {}).get("estimated_total")
+
+        if not alt_label or not alt_score:
+            continue
+
+        if alt_total:
+            line = f"{alt_label} (~{int(alt_score)}%, est. SGD {int(alt_total)})"
+        else:
+            line = f"{alt_label} (~{int(alt_score)}%)"
+
+        alt_lines.append(line)
+
+    if alt_lines:
+        explanation_parts.append("Other options: " + " | ".join(alt_lines))
+
+    explanation = ""
+    if explanation_parts:
+        explanation = " " + " ".join(explanation_parts)
+
+    if score_pct:
+        state["final_response"] = (
+            f"{base_message} (Plan quality: {int(score_pct)}%){explanation}"
+        )
+    else:
+        state["final_response"] = base_message + explanation
+
+    return add_trace(state, "reviewer completed")
+
+
+AGENT_REGISTRY: dict[str, Callable[[AgentState], Awaitable[AgentState]]] = {
+    "request_parser": request_parser_agent,
+    "routing": routing_agent,
+    "place_resolver": place_resolver_agent,
+    "personalization": personalization_agent,
+    "planner": planner_agent,
+    "executor": executor_agent,
+    "realism": realism_agent,
+    "variant": variant_agent,
+    "ranking": ranking_agent,
+    "reviewer": reviewer_agent,
+}
+
+
+async def run_agent_with_retry(agent_name: str, state: AgentState) -> AgentState:
+    agent_fn = AGENT_REGISTRY[agent_name]
+
+    last_error: Exception | None = None
+
+    for attempt in range(1, MAX_AGENT_RETRIES + 1):
         try:
-            if stage_name == "planner":
-                result = execute_with_retry(handler, normalized_req)
-
-            elif stage_name == "executor":
-                result = execute_with_retry(
-                    handler,
-                    normalized_req,
-                    stage_outputs["planner"],
-                )
-
-            elif stage_name == "reviewer":
-                result = execute_with_retry(
-                    handler,
-                    normalized_req,
-                    stage_outputs["planner"],
-                    stage_outputs["executor"],
-                )
-
-            else:
-                return _build_failure_response(
-                    normalized_req=normalized_req,
-                    stage_outputs=stage_outputs,
-                    failed_stage=stage_name,
-                )
-
-        except Exception as error:
-            # Safe logging only
-            print(f"[workflow] stage={stage_name} failed error={repr(error)}")
-
-            return _build_failure_response(
-                normalized_req=normalized_req,
-                stage_outputs=stage_outputs,
-                failed_stage=stage_name,
+            state = await agent_fn(state)
+            return state
+        except Exception as exc:
+            last_error = exc
+            add_error(
+                state=state,
+                agent=agent_name,
+                error=f"Attempt {attempt}: {exc}",
+                fallback_used=True,
             )
 
-        if not isinstance(result, dict):
-            print(f"[workflow] stage={stage_name} returned non-dict output")
+    return apply_agent_fallback(agent_name, state, last_error)
 
-            return _build_failure_response(
-                normalized_req=normalized_req,
-                stage_outputs=stage_outputs,
-                failed_stage=stage_name,
+
+def apply_agent_fallback(
+    agent_name: str,
+    state: AgentState,
+    error: Exception | None,
+) -> AgentState:
+    add_trace(state, f"{agent_name} fallback activated")
+
+    if agent_name == "request_parser":
+        state["parsed_request"] = {
+            "destinations": [],
+            "duration_days": None,
+            "budget": None,
+            "preferences": [],
+        }
+
+    elif agent_name == "place_resolver":
+        parsed = state.get("parsed_request", {})
+        destinations = parsed.get("destinations", [])
+
+        state["destinations"] = destinations
+        state["display_destinations"] = destinations
+        state["destination_metadata"] = []
+
+    elif agent_name == "personalization":
+        state["personalization"] = {
+            "travel_style": "balanced",
+            "interest_tags": [],
+            "hotel_tier": "mid",
+            "activity_bias": "general",
+        }
+
+    elif agent_name == "planner":
+        state["planner_output"] = {
+            "summary": "Basic travel planning fallback was used.",
+            "assumptions": [],
+            "budget_notes": [],
+            "travel_modes": [],
+        }
+
+    elif agent_name == "executor":
+        state["executor_output"] = {
+            "itinerary": [],
+            "travel_details": [],
+            "attractions": [],
+            "restaurants": [],
+            "cost_breakdown": {},
+        }
+
+    elif agent_name == "realism":
+        state["realism"] = {
+            "pace": "balanced",
+            "feasibility_flags": [],
+            "recommended_best_fit_days": None,
+        }
+
+    elif agent_name == "reviewer":
+        state["reviewer_output"] = {
+            "message": (
+                "I could not fully validate the travel plan, but the request was processed. "
+                "Please try again with a destination, duration, and budget."
             )
-        
-        print(f"[workflow] stage={stage_name} result_keys={list(result.keys())}")
-        
-        stage_outputs[stage_name] = result
-        
-    reviewer = stage_outputs["reviewer"]
+        }
+        state["final_response"] = state["reviewer_output"]["message"]
+
+    add_error(
+        state=state,
+        agent=agent_name,
+        error=error or "Unknown error",
+        fallback_used=True,
+    )
+
+    return state
+
+
+async def run_workflow(raw_request: str) -> dict[str, Any]:
+    state = create_initial_state(raw_request)
+
+    # Always run parser first.
+    state = await run_agent_with_retry("request_parser", state)
+
+    # Then run router.
+    state = await run_agent_with_retry("routing", state)
+
+    selected_route = state.get("selected_route") or DEFAULT_AGENT_PIPELINE
+
+    # request_parser and routing already ran.
+    remaining_agents = [
+        agent_name
+        for agent_name in selected_route
+        if agent_name not in {"request_parser", "routing"}
+    ]
+
+    for agent_name in remaining_agents:
+        state = await run_agent_with_retry(agent_name, state)
+
     return {
-        "request": normalized_req,
-        "planner": stage_outputs["planner"],
-        "executor": stage_outputs["executor"],
-        "reviewer": reviewer,
-        "top_3_options": reviewer.get("top_3_options", []),
+        "message": state.get(
+            "final_response",
+            "I could not complete the travel plan. Please try again.",
+        ),
+        "state": state,
     }
