@@ -3,7 +3,7 @@ import asyncio
 import httpx
 from fastapi import FastAPI, Request, Response
 from telegram import Update
-from telegram.ext import Application, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 from app.common.request_parser import parse_trip_request
 
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -27,6 +27,48 @@ async def send_telegram_message(chat_id: int, text: str):
         )
 
 
+async def progress_updater(chat_id: int, message_id: int):
+    try:
+        await asyncio.sleep(60)
+        await ptb.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=message_id,
+            text="Almost ready...",
+        )
+
+        await asyncio.sleep(60)
+        await ptb.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=message_id,
+            text="Anytime now...",
+        )
+    except asyncio.CancelledError:
+        pass
+    except Exception:
+        pass
+
+
+async def start(update, context):
+    if not update.message:
+        return
+
+    msg = (
+        "Welcome to Travel Assist.\n\n"
+        "To start building your itinerary, just say something like:\n"
+        "4 days Kuala Lumpur $1500\n\n"
+        "Optional add-ons:\n"
+        "- food\n"
+        "- shopping\n"
+        "- culture\n"
+        "- adventure\n\n"
+        "Example:\n"
+        "3 days KL food and shopping $800\n\n"
+        "All itinerary prices are shown in SGD."
+    )
+
+    await update.message.reply_text(msg)
+
+
 async def format_and_send(update: Update):
     global ptb
 
@@ -39,16 +81,22 @@ async def format_and_send(update: Update):
 
     status_message = await ptb.bot.send_message(
         chat_id=chat_id,
-        text="Agents are working on your request...",
+        text="We are building your itinerary now...",
+    )
+
+    progress_task = asyncio.create_task(
+        progress_updater(chat_id, status_message.message_id)
     )
 
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient(timeout=180) as client:
             backend_base = BACKEND_URL.rstrip("/")
             r = await client.post(f"{backend_base}/plan", json=payload)
             r.raise_for_status()
             result = r.json()
     except Exception as e:
+        progress_task.cancel()
+
         try:
             await ptb.bot.delete_message(
                 chat_id=chat_id,
@@ -63,6 +111,8 @@ async def format_and_send(update: Update):
         )
         return
 
+    progress_task.cancel()
+
     try:
         await ptb.bot.delete_message(
             chat_id=chat_id,
@@ -73,27 +123,49 @@ async def format_and_send(update: Update):
 
     executor = result.get("executor", {})
     reviewer = result.get("reviewer", {})
-    top = reviewer.get("top_3_options", [])
     cost_breakdown = executor.get("cost_breakdown", {})
     travel = executor.get("travel_details", {})
     nearby_attractions = executor.get("nearby_attractions", [])
     restaurants = executor.get("restaurants", [])
     daily_itinerary = executor.get("daily_itinerary", [])
+    top = reviewer.get("top_3_options", [])
+
+    realism = executor.get("realism", {})
+    personalization = executor.get("personalization", {})
+
+    pace = str(realism.get("pace", "unknown")).capitalize()
+    style = str(personalization.get("travel_style", "general")).capitalize()
 
     within_budget = reviewer.get("within_budget")
-
     if within_budget is None:
         budget_fit_text = "Not assessed"
     else:
         budget_fit_text = "Yes" if within_budget else "No"
 
+    dest_text = (
+        ", ".join(payload.get("destinations", []))
+        if payload.get("destinations")
+        else "Not detected"
+    )
+
+    estimated_total = reviewer.get("estimated_total")
+    estimated_total_text = (
+        f"SGD {estimated_total:.0f}"
+        if isinstance(estimated_total, (int, float))
+        else f"SGD {estimated_total}"
+    )
+
     msg = [
         "Trip plan ready",
         "",
-        f"Destination: {', '.join(payload.get('destinations', [])) if payload.get('destinations') else 'Not detected'}",
-        f"Duration: {payload.get('duration_days')} days",
-        f"Budget fit: {budget_fit_text}",
-        f"Estimated cost: SGD {reviewer.get('estimated_total')}",
+        f"📍 Destination: {dest_text}",
+        f"🗓 Duration: {payload.get('duration_days')} days",
+        f"💰 Budget fit: {budget_fit_text}",
+        f"💵 Estimated cost: {estimated_total_text}",
+        "",
+        "🧭 Trip Overview",
+        f"Trip pacing: {pace}",
+        f"Style: {style}",
     ]
 
     summary = reviewer.get("user_message")
@@ -102,7 +174,7 @@ async def format_and_send(update: Update):
         msg.append(summary)
 
     msg.append("")
-    msg.append("Cost breakdown:")
+    msg.append("💰 Cost Breakdown")
     msg.append(f"- Flight: {cost_breakdown.get('flight', 'SGD 0')}")
     msg.append(f"- Hotel: {cost_breakdown.get('hotel', 'SGD 0')}")
     msg.append(f"- Activities: {cost_breakdown.get('activities', 'SGD 0')}")
@@ -111,17 +183,17 @@ async def format_and_send(update: Update):
     msg.append(f"- Total: {cost_breakdown.get('total', 'SGD 0')}")
 
     msg.append("")
-    msg.append("Travel details:")
+    msg.append("✈️ Travel Details")
 
     flight = travel.get("flight", {})
-    msg.append(f"- Flight suggestion: {flight.get('suggestion', '-')}")
+    msg.append(f"- Flight: {flight.get('suggestion', '-')}")
     msg.append(f"  Price: {flight.get('estimated_price', '-')}")
     if flight.get("search_link"):
         msg.append(f"  Search: {flight.get('search_link')}")
 
     hotel = travel.get("hotel", {})
     msg.append("")
-    msg.append(f"- Suggested hotel: {hotel.get('name', '-')}")
+    msg.append(f"- Hotel: {hotel.get('name', '-')}")
     msg.append(f"  Price: {hotel.get('estimated_price', '-')}")
     msg.append(f"  Location: {hotel.get('location_note', '-')}")
     if hotel.get("booking_link"):
@@ -135,12 +207,12 @@ async def format_and_send(update: Update):
 
     if nearby_attractions:
         msg.append("")
-        msg.append("Nearby attractions from hotel:")
+        msg.append("📍 Nearby Attractions")
         for item in nearby_attractions[:3]:
             if isinstance(item, dict):
-                msg.append(f"- {item.get('name', 'Attraction')}")
                 msg.append(
-                    f"  Time from hotel: {item.get('distance_note', 'Not provided')}"
+                    f"- {item.get('name', 'Attraction')} "
+                    f"({item.get('distance_note', 'Not provided')})"
                 )
                 if item.get("search_link"):
                     msg.append(f"  Search: {item.get('search_link')}")
@@ -149,12 +221,12 @@ async def format_and_send(update: Update):
 
     if restaurants:
         msg.append("")
-        msg.append("Nearby food places from hotel:")
+        msg.append("🍜 Food & Restaurants")
         for item in restaurants[:3]:
             if isinstance(item, dict):
-                msg.append(f"- {item.get('name', 'Restaurant')}")
                 msg.append(
-                    f"  Time from hotel: {item.get('distance_note', 'Not provided')}"
+                    f"- {item.get('name', 'Restaurant')} "
+                    f"({item.get('distance_note', 'Not provided')})"
                 )
                 if item.get("search_link"):
                     msg.append(f"  Search: {item.get('search_link')}")
@@ -163,7 +235,7 @@ async def format_and_send(update: Update):
 
     if daily_itinerary:
         msg.append("")
-        msg.append("Day-by-day itinerary:")
+        msg.append("🗓 Day-by-day Itinerary")
         for item in daily_itinerary[:5]:
             if isinstance(item, dict):
                 msg.append(f"Day {item.get('day', '-')}: {item.get('title', '')}")
@@ -174,7 +246,7 @@ async def format_and_send(update: Update):
 
     if top:
         msg.append("")
-        msg.append("Top options:")
+        msg.append("⭐ Top Options")
         for i, o in enumerate(top, 1):
             if isinstance(o, dict):
                 msg.append(f"{i}. {o.get('name', '')}")
@@ -207,6 +279,7 @@ async def startup():
         raise RuntimeError("TELEGRAM_WEBHOOK_URL is not set")
 
     ptb = Application.builder().token(BOT_TOKEN).updater(None).build()
+    ptb.add_handler(CommandHandler("start", start))
     ptb.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
 
     await ptb.initialize()
