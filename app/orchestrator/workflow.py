@@ -444,10 +444,12 @@ def apply_agent_fallback(
 
     elif agent_name == "personalization":
         state["personalization"] = {
-            "travel_style": "balanced",
+            "travel_style": "general",
             "interest_tags": [],
             "hotel_tier": "mid",
-            "activity_bias": "general",
+            "activity_bias": ["general_sightseeing"],
+            "source": "fallback",
+            "reason": "personalization_agent_failed",
         }
 
     elif agent_name == "planner":

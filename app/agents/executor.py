@@ -4,7 +4,10 @@ from urllib.parse import quote_plus
 from app.common.openai_client import get_openai_client, MODEL
 from app.pricing.engine import estimate_trip_costs
 from app.intelligence.realism import assess_trip_realism
-from app.intelligence.personalization import build_personalization_profile
+from app.intelligence.personalization import (
+    build_personalization_profile,
+    default_personalization_profile,
+)
 
 
 def _to_number(value, default=0.0):
@@ -59,9 +62,19 @@ def _booking_search_link(destination: str, start_date: str, end_date: str) -> st
 def build_itinerary(req: dict, plan: dict):
     client = get_openai_client()
 
-    profile = build_personalization_profile(
-        preferences=req.get("preferences")
-    )
+    existing_profile = req.get("personalization")
+
+    if isinstance(existing_profile, dict) and existing_profile:
+        profile = existing_profile
+    elif req.get("preferences"):
+        profile = build_personalization_profile(
+            preferences=req.get("preferences"),
+            source="executor_generated",
+        )
+    else:
+        profile = default_personalization_profile(
+            reason="executor_no_preferences"
+        )
     
     destinations = req.get("destinations", [])
     origin = req.get("origin", "Singapore")
