@@ -13,6 +13,8 @@ FULL_TRIP_PIPELINE = [
     "realism",
     "variant",
     "ranking",
+    "feedback",
+    "continuity",
     "reviewer",
 ]
 
@@ -25,6 +27,8 @@ BASIC_TRIP_PIPELINE = [
     "realism",
     "variant",
     "ranking",
+    "feedback",
+    "continuity",
     "reviewer",
 ]
 
@@ -37,6 +41,8 @@ BUDGET_ONLY_PIPELINE = [
     "executor",
     "variant",
     "ranking",
+    "feedback",
+    "continuity",
     "reviewer",
 ]
 
@@ -90,9 +96,9 @@ def build_agent_route(state: AgentState) -> list[str]:
     Lightweight deterministic router.
 
     Rules:
-    1. Budget-only request → budget-focused route.
-    2. No preferences → skip personalization.
-    3. Otherwise → full trip pipeline.
+    1. Budget-only request -> budget-focused route.
+    2. No preferences -> skip personalization.
+    3. Otherwise -> full trip pipeline.
     """
 
     raw_request = str(state.get("raw_request", "")).lower()

@@ -15,6 +15,7 @@ from app.intelligence.feedback_selector import select_variant_from_feedback
 from app.intelligence.personalization import personalize_request
 from app.intelligence.place_resolver import resolve_places
 from app.intelligence.realism import assess_realism
+from app.intelligence.conversation_interpreter import interpret_conversation_followup
 from app.orchestrator.state import AgentState, add_error, add_trace, create_initial_state
 
 
@@ -31,6 +32,8 @@ DEFAULT_AGENT_PIPELINE = [
     "realism",
     "variant",
     "ranking",
+    "feedback",
+    "continuity",
     "reviewer",
 ]
 
@@ -171,6 +174,123 @@ async def feedback_agent(state: AgentState) -> AgentState:
     )
 
 
+async def continuity_agent(state: AgentState) -> AgentState:
+    """
+    Sprint 3.8 — Conversational Continuity.
+
+    Applies lightweight follow-up modifications to the selected executor output.
+    This keeps the system deterministic and avoids unnecessary full regeneration.
+    """
+
+    feedback_text = state.get("user_feedback", "").strip()
+    continuity_output = interpret_conversation_followup(feedback_text)
+
+    state["continuity_output"] = continuity_output
+
+    if not continuity_output.get("has_followup"):
+        return add_trace(
+            state,
+            "continuity completed - no follow-up modification detected",
+        )
+
+    executor_output = state.get("executor_output", {}) or {}
+    parsed = state.get("parsed_request", {}) or {}
+
+    adjustments = continuity_output.get("requested_adjustments", [])
+
+    if continuity_output.get("new_budget"):
+        parsed["budget"] = continuity_output["new_budget"]
+        state["parsed_request"] = parsed
+
+    if "add_food_places" in adjustments:
+        restaurants = executor_output.get("restaurants", [])
+
+        restaurants.extend(
+            [
+                {
+                    "name": "Local food market",
+                    "search_link": "https://www.google.com/search?q=best+local+food+nearby",
+                    "distance_note": "Suggested local food stop",
+                },
+                {
+                    "name": "Popular seafood restaurant",
+                    "search_link": "https://www.google.com/search?q=best+seafood+restaurant+nearby",
+                    "distance_note": "Suggested seafood option",
+                },
+            ]
+        )
+
+        executor_output["restaurants"] = restaurants
+
+    if "add_nature_activities" in adjustments:
+        attractions = executor_output.get("nearby_attractions", [])
+
+        attractions.extend(
+            [
+                {
+                    "name": "Nature park or reserve",
+                    "search_link": "https://www.google.com/search?q=best+nature+park+nearby",
+                    "distance_note": "Suggested nature activity",
+                },
+                {
+                    "name": "Scenic viewpoint",
+                    "search_link": "https://www.google.com/search?q=best+scenic+viewpoint+nearby",
+                    "distance_note": "Suggested scenic stop",
+                },
+            ]
+        )
+
+        executor_output["nearby_attractions"] = attractions
+
+    if "add_more_activities" in adjustments:
+        itinerary = executor_output.get("daily_itinerary", [])
+
+        if itinerary:
+            itinerary[-1]["details"] = (
+                itinerary[-1].get("details", "")
+                + " Add one optional light activity if time allows."
+            )
+
+        executor_output["daily_itinerary"] = itinerary
+
+    if "relax_pace" in adjustments:
+        realism = executor_output.get("realism", {})
+        realism["pace"] = "relaxed"
+        realism.setdefault("notes", [])
+        realism["notes"].append(
+            "User requested a less rushed itinerary with more buffer time."
+        )
+
+        executor_output["realism"] = realism
+
+        itinerary = executor_output.get("daily_itinerary", [])
+        for day in itinerary:
+            day["details"] = (
+                day.get("details", "")
+                + " Keep this day flexible with rest time between activities."
+            )
+
+        executor_output["daily_itinerary"] = itinerary
+
+    if "increase_comfort" in adjustments:
+        executor_output["variant_key"] = "comfort"
+        executor_output["variant_label"] = "Comfort Upgrade"
+
+        travel_details = executor_output.get("travel_details", {})
+        hotel = travel_details.get("hotel", {})
+        hotel["comfort_note"] = "User requested a more comfortable stay."
+        travel_details["hotel"] = hotel
+        executor_output["travel_details"] = travel_details
+
+    state["executor_output"] = executor_output
+
+    return add_trace(
+        state,
+        "continuity completed - applied "
+        + ", ".join(adjustments),
+    )
+    
+
 async def reviewer_agent(state: AgentState) -> AgentState:
     parsed = state.get("parsed_request", {})
     planner_output = state.get("planner_output", {})
@@ -269,6 +389,7 @@ AGENT_REGISTRY: dict[str, Callable[[AgentState], Awaitable[AgentState]]] = {
     "variant": variant_agent,
     "ranking": ranking_agent,
     "feedback": feedback_agent,
+    "continuity": continuity_agent,
     "reviewer": reviewer_agent,
 }
 
@@ -400,9 +521,6 @@ async def run_workflow(
 
     for agent_name in remaining_agents:
         state = await run_agent_with_retry(agent_name, state)
-
-    state = await run_agent_with_retry("feedback", state)
-    state = await run_agent_with_retry("reviewer", state)
 
     return {
         "message": state.get(
