@@ -90,7 +90,14 @@ def build_demo_response(
         "reviewer": reviewer_output,
         "ranking": ranking_output,
         "selected_variant": selected_variant,
-        "variants": variants,
+        "variants": [
+            {
+                "variant_key": v.get("variant_key"),
+                "variant_label": v.get("variant_label"),
+                "ranking": v.get("ranking", {}),
+            }
+            for v in variants
+        ],
         "feedback": feedback_output,
         "continuity": continuity_output,
         "session_memory": session_memory,
