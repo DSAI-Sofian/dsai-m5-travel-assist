@@ -4,6 +4,7 @@ from app.orchestrator.workflow import run_workflow
 
 app = FastAPI(title="SEA Travel Planner")
 
+
 class TripRequest(BaseModel):
     origin: str
     destinations: list[str]
@@ -11,6 +12,7 @@ class TripRequest(BaseModel):
     duration_days: int
     travelers: int = 1
     preferences: list[str] = []
+    feedback: str | None = None
 
 def build_raw_request(req: TripRequest) -> str:
     """
@@ -34,6 +36,9 @@ def build_raw_request(req: TripRequest) -> str:
 
     if req.travelers > 1:
         parts.append(f"for {req.travelers} people")
+    
+    if req.feedback:
+        parts.append(f"feedback: {req.feedback}")
 
     return " ".join(parts)
 
@@ -54,4 +59,7 @@ async def plan(req: TripRequest):
     # Convert structured request → natural language string
     raw_request = build_raw_request(req)
 
-    return await run_workflow(raw_request)
+    return await run_workflow(
+    raw_request=raw_request,
+    feedback=req.feedback,
+    )

@@ -5,11 +5,13 @@ from typing import Any, Awaitable, Callable
 
 from app.agents.executor import run_executor
 from app.agents.planner import run_planner
-from app.agents.variant import variant_agent
 from app.agents.ranking import ranking_agent
 from app.agents.reviewer import run_reviewer
 from app.agents.router import routing_agent
+from app.agents.variant import variant_agent
 from app.common.request_parser import parse_request
+from app.intelligence.feedback_interpreter import interpret_user_feedback
+from app.intelligence.feedback_selector import select_variant_from_feedback
 from app.intelligence.personalization import personalize_request
 from app.intelligence.place_resolver import resolve_places
 from app.intelligence.realism import assess_realism
@@ -116,6 +118,59 @@ async def realism_agent(state: AgentState) -> AgentState:
     return add_trace(state, "realism completed")
 
 
+async def feedback_agent(state: AgentState) -> AgentState:
+    feedback_text = state.get("user_feedback", "").strip()
+
+    feedback_output = interpret_user_feedback(feedback_text)
+
+    state["feedback_output"] = feedback_output
+
+    if not feedback_output.get("has_feedback"):
+        return add_trace(
+            state,
+            "feedback_interpreter completed - no feedback detected",
+        )
+
+    variants = state.get("plan_variants", [])
+
+    if not variants:
+        return add_trace(
+            state,
+            "feedback_interpreter completed - no variants available",
+        )
+
+    selected_variant = select_variant_from_feedback(
+        variants=variants,
+        feedback=feedback_output,
+        current_selected=state.get("selected_variant"),
+    )
+
+    if selected_variant:
+        state["selected_variant"] = {
+            "variant_key": selected_variant.get("variant_key"),
+            "variant_label": selected_variant.get("variant_label"),
+            "ranking": selected_variant.get("ranking", {}),
+        }
+
+        state["executor_output"] = selected_variant.get(
+            "executor_output",
+            {},
+        )
+
+        selected_ranking = selected_variant.get("ranking", {})
+
+        state["ranking_output"] = {
+            **selected_ranking,
+            "selected_by_feedback": True,
+            "selection_reason": feedback_output.get("reason"),
+        }
+
+    return add_trace(
+        state,
+        f"feedback_interpreter completed - applied {selected_variant.get('variant_label')}",
+    )
+
+
 async def reviewer_agent(state: AgentState) -> AgentState:
     parsed = state.get("parsed_request", {})
     planner_output = state.get("planner_output", {})
@@ -156,6 +211,12 @@ async def reviewer_agent(state: AgentState) -> AgentState:
     if selected:
         label = selected.get("variant_label", "selected plan")
         explanation_parts.append(f"We selected the {label} based on overall best fit.")
+
+    feedback_output = state.get("feedback_output", {})
+    if feedback_output.get("has_feedback"):
+        feedback_reason = feedback_output.get("reason")
+        if feedback_reason:
+            explanation_parts.append(f"User feedback applied: {feedback_reason}")
 
     alternatives = [
         variant
@@ -207,6 +268,7 @@ AGENT_REGISTRY: dict[str, Callable[[AgentState], Awaitable[AgentState]]] = {
     "realism": realism_agent,
     "variant": variant_agent,
     "ranking": ranking_agent,
+    "feedback": feedback_agent,
     "reviewer": reviewer_agent,
 }
 
@@ -287,6 +349,16 @@ def apply_agent_fallback(
             "recommended_best_fit_days": None,
         }
 
+    elif agent_name == "feedback":
+        state["feedback_output"] = {
+            "has_feedback": False,
+            "feedback_text": "",
+            "preferred_variant": None,
+            "adjustment": None,
+            "confidence": 0.0,
+            "reason": None,
+        }
+
     elif agent_name == "reviewer":
         state["reviewer_output"] = {
             "message": (
@@ -306,26 +378,31 @@ def apply_agent_fallback(
     return state
 
 
-async def run_workflow(raw_request: str) -> dict[str, Any]:
+async def run_workflow(
+    raw_request: str,
+    feedback: str | None = None,
+) -> dict[str, Any]:
+
     state = create_initial_state(raw_request)
 
-    # Always run parser first.
-    state = await run_agent_with_retry("request_parser", state)
+    state["user_feedback"] = feedback or ""
 
-    # Then run router.
+    state = await run_agent_with_retry("request_parser", state)
     state = await run_agent_with_retry("routing", state)
 
     selected_route = state.get("selected_route") or DEFAULT_AGENT_PIPELINE
 
-    # request_parser and routing already ran.
     remaining_agents = [
         agent_name
         for agent_name in selected_route
-        if agent_name not in {"request_parser", "routing"}
+        if agent_name not in {"request_parser", "routing", "reviewer"}
     ]
 
     for agent_name in remaining_agents:
         state = await run_agent_with_retry(agent_name, state)
+
+    state = await run_agent_with_retry("feedback", state)
+    state = await run_agent_with_retry("reviewer", state)
 
     return {
         "message": state.get(
