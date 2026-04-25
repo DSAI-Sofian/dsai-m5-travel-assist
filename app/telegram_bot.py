@@ -251,10 +251,9 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
                 msg.append(f"- {str(item)}")
 
     alternatives = []
-    state = result.get("state", {}) or {}
-    for variant in state.get("plan_variants", []) or []:
-        if variant.get("variant_key") == selected_variant.get("variant_key"):
-            continue
+    variants = result.get("variants", []) or []
+
+    for variant in variants:
 
         label = variant.get("variant_label", "Alternative")
         v_ranking = variant.get("ranking", {}) or {}

@@ -1,6 +1,7 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
 from typing import Any
+
+from fastapi import FastAPI
+from pydantic import BaseModel, Field, field_validator
 
 from app.orchestrator.workflow import run_workflow
 
@@ -9,18 +10,37 @@ app = FastAPI(title="SEA Travel Planner")
 
 
 class TripRequest(BaseModel):
-    origin: str
-    destinations: list[str]
-    budget: float | None = None
-    duration_days: int
-    travelers: int = 1
-    preferences: list[str] = []
+    origin: str = Field(default="Singapore", min_length=1)
+    destinations: list[str] = Field(default_factory=list)
+    budget: float | None = Field(default=None, ge=0)
+    duration_days: int = Field(default=4, ge=1, le=30)
+    travelers: int = Field(default=1, ge=1, le=20)
+    preferences: list[str] = Field(default_factory=list)
     feedback: str | None = None
     session_memory: dict[str, Any] | None = None
+    include_state: bool = False
+
+    @field_validator("destinations", "preferences")
+    @classmethod
+    def clean_string_lists(cls, value: list[str]) -> list[str]:
+        return [
+            str(item).strip()
+            for item in value
+            if str(item).strip()
+        ]
+
+    @field_validator("feedback")
+    @classmethod
+    def clean_feedback(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+
+        cleaned = value.strip()
+        return cleaned or None
 
 
 def build_raw_request(req: TripRequest) -> str:
-    parts = []
+    parts: list[str] = []
 
     if req.duration_days:
         parts.append(f"{req.duration_days} days")
@@ -28,7 +48,7 @@ def build_raw_request(req: TripRequest) -> str:
     if req.destinations:
         parts.append(" ".join(req.destinations))
 
-    if req.budget:
+    if req.budget is not None:
         parts.append(f"budget S${int(req.budget)}")
 
     if req.preferences:
@@ -40,10 +60,13 @@ def build_raw_request(req: TripRequest) -> str:
     if req.feedback:
         parts.append(f"feedback: {req.feedback}")
 
-    return " ".join(parts)
+    return " ".join(parts).strip()
 
 
-def build_demo_response(workflow_result: dict[str, Any]) -> dict[str, Any]:
+def build_demo_response(
+    workflow_result: dict[str, Any],
+    include_state: bool = False,
+) -> dict[str, Any]:
     state = workflow_result.get("state", {}) or {}
 
     parsed_request = state.get("parsed_request", {}) or {}
@@ -54,8 +77,10 @@ def build_demo_response(workflow_result: dict[str, Any]) -> dict[str, Any]:
     feedback_output = state.get("feedback_output", {}) or {}
     continuity_output = state.get("continuity_output", {}) or {}
     session_memory = state.get("session_memory", {}) or {}
+    variants = state.get("plan_variants", []) or []
+    errors = state.get("errors", []) or []
 
-    return {
+    response = {
         "message": workflow_result.get("message"),
         "request": {
             **parsed_request,
@@ -65,13 +90,19 @@ def build_demo_response(workflow_result: dict[str, Any]) -> dict[str, Any]:
         "reviewer": reviewer_output,
         "ranking": ranking_output,
         "selected_variant": selected_variant,
+        "variants": variants,
         "feedback": feedback_output,
         "continuity": continuity_output,
         "session_memory": session_memory,
         "debug_trace": state.get("debug_trace", []),
-        "errors": state.get("errors", []),
-        "state": state,
+        "errors": errors,
+        "status": "ok" if not errors else "completed_with_warnings",
     }
+
+    if include_state:
+        response["state"] = state
+
+    return response
 
 
 @app.get("/health")
@@ -92,10 +123,26 @@ def root():
 async def plan(req: TripRequest):
     raw_request = build_raw_request(req)
 
-    workflow_result = await run_workflow(
-        raw_request=raw_request,
-        feedback=req.feedback,
-        session_memory=req.session_memory,
-    )
+    try:
+        workflow_result = await run_workflow(
+            raw_request=raw_request,
+            feedback=req.feedback,
+            session_memory=req.session_memory,
+        )
 
-    return build_demo_response(workflow_result)
+        return build_demo_response(
+            workflow_result=workflow_result,
+            include_state=req.include_state,
+        )
+
+    except Exception as exc:
+        return {
+            "status": "error",
+            "message": (
+                "I could not complete the travel plan due to a system error. "
+                "Please try again with destination, duration, budget, and preferences."
+            ),
+            "error_type": exc.__class__.__name__,
+            "debug_trace": [],
+            "errors": [str(exc)],
+        }
