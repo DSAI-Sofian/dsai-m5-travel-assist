@@ -109,3 +109,17 @@ pricing/__pycache__/
 
 # Deployment
 Dockerfile
+# Internal / private assets
+tools/
+deploy/
+docs/
+huggingface/
+pricing/__pycache__/
+__pycache__/
+*.pyc
+
+# Deployment / production-only
+Dockerfile
+
+# Internal metadata
+*.meta.json
