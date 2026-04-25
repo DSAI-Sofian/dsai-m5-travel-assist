@@ -90,3 +90,22 @@ docker-compose.override.yml
 # Prevent committing local data
 data/
 outputs/
+
+# Python
+__pycache__/
+*.pyc
+
+# Internal folders
+tools/
+deploy/
+docs/
+huggingface/
+
+# Cache
+pricing/__pycache__/
+
+# Internal metadata
+*.meta.json
+
+# Deployment
+Dockerfile
