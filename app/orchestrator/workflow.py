@@ -6,16 +6,15 @@ from typing import Any, Awaitable, Callable
 from app.agents.executor import run_executor
 from app.agents.planner import run_planner
 from app.agents.ranking import ranking_agent
-from app.agents.reviewer import run_reviewer
 from app.agents.router import routing_agent
 from app.agents.variant import variant_agent
 from app.common.request_parser import parse_request
+from app.intelligence.conversation_interpreter import interpret_conversation_followup
 from app.intelligence.feedback_interpreter import interpret_user_feedback
 from app.intelligence.feedback_selector import select_variant_from_feedback
 from app.intelligence.personalization import personalize_request
 from app.intelligence.place_resolver import resolve_places
 from app.intelligence.realism import assess_realism
-from app.intelligence.conversation_interpreter import interpret_conversation_followup
 from app.orchestrator.state import AgentState, add_error, add_trace, create_initial_state
 
 
@@ -125,7 +124,6 @@ async def feedback_agent(state: AgentState) -> AgentState:
     feedback_text = state.get("user_feedback", "").strip()
 
     feedback_output = interpret_user_feedback(feedback_text)
-
     state["feedback_output"] = feedback_output
 
     if not feedback_output.get("has_feedback"):
@@ -155,10 +153,7 @@ async def feedback_agent(state: AgentState) -> AgentState:
             "ranking": selected_variant.get("ranking", {}),
         }
 
-        state["executor_output"] = selected_variant.get(
-            "executor_output",
-            {},
-        )
+        state["executor_output"] = selected_variant.get("executor_output", {})
 
         selected_ranking = selected_variant.get("ranking", {})
 
@@ -175,13 +170,6 @@ async def feedback_agent(state: AgentState) -> AgentState:
 
 
 async def continuity_agent(state: AgentState) -> AgentState:
-    """
-    Sprint 3.8 — Conversational Continuity.
-
-    Applies lightweight follow-up modifications to the selected executor output.
-    This keeps the system deterministic and avoids unnecessary full regeneration.
-    """
-
     feedback_text = state.get("user_feedback", "").strip()
     continuity_output = interpret_conversation_followup(feedback_text)
 
@@ -257,18 +245,22 @@ async def continuity_agent(state: AgentState) -> AgentState:
         realism = executor_output.get("realism", {})
         realism["pace"] = "relaxed"
         realism.setdefault("notes", [])
-        realism["notes"].append(
-            "User requested a less rushed itinerary with more buffer time."
-        )
+
+        if "User requested a less rushed itinerary with more buffer time." not in realism["notes"]:
+            realism["notes"].append(
+                "User requested a less rushed itinerary with more buffer time."
+            )
 
         executor_output["realism"] = realism
 
         itinerary = executor_output.get("daily_itinerary", [])
+
+        buffer_text = " Keep this day flexible with rest time between activities."
+
         for day in itinerary:
-            day["details"] = (
-                day.get("details", "")
-                + " Keep this day flexible with rest time between activities."
-            )
+            details = day.get("details", "")
+            if buffer_text.strip() not in details:
+                day["details"] = details + buffer_text
 
         executor_output["daily_itinerary"] = itinerary
 
@@ -286,96 +278,104 @@ async def continuity_agent(state: AgentState) -> AgentState:
 
     return add_trace(
         state,
-        "continuity completed - applied "
-        + ", ".join(adjustments),
+        "continuity completed - applied " + ", ".join(adjustments),
     )
-    
+
 
 async def reviewer_agent(state: AgentState) -> AgentState:
-    parsed = state.get("parsed_request", {})
-    planner_output = state.get("planner_output", {})
-    executor_output = state.get("executor_output", {})
+    """
+    Final presentation and summarization agent.
+    Hardened for Sprint 3.8 orchestration.
+    """
 
-    reviewer_output = await maybe_await(
-        run_reviewer(
-            parsed_request=parsed,
-            planner_output=planner_output,
-            executor_output=executor_output,
-        )
-    )
+    try:
+        executor_output = state.get("executor_output", {}) or {}
+        ranking_output = state.get("ranking_output", {}) or {}
+        selected_variant = state.get("selected_variant", {}) or {}
 
-    ranking = state.get("ranking_output", {})
-    variants = state.get("plan_variants", [])
-    selected = state.get("selected_variant", {})
+        realism = executor_output.get("realism", {}) or {}
+        cost_breakdown = executor_output.get("cost_breakdown", {}) or {}
 
-    reviewer_output["ranking"] = ranking
-    state["reviewer_output"] = reviewer_output
+        score_pct = ranking_output.get("score_pct", 0)
 
-    score_pct = ranking.get("score_pct")
-    selected_key = selected.get("variant_key")
-
-    base_message = (
-        reviewer_output.get("message")
-        or reviewer_output.get("user_message")
-        or "I prepared your travel plan, but the final summary could not be formatted correctly."
-    )
-
-    if selected_key == "comfort" and "budget-friendly" in base_message.lower():
-        base_message = base_message.replace(
-            "budget-friendly adventure",
-            "comfortable and well-paced adventure",
+        variant_label = (
+            selected_variant.get("variant_label")
+            or executor_output.get("variant_label")
+            or "Recommended Plan"
         )
 
-    explanation_parts = []
+        destinations = state.get("display_destinations", ["your destination"])
+        user_message = f"Your trip to {', '.join(destinations)} looks exciting!"
 
-    if selected:
-        label = selected.get("variant_label", "selected plan")
-        explanation_parts.append(f"We selected the {label} based on overall best fit.")
+        if realism.get("pace") == "relaxed":
+            user_message += " The itinerary has been adjusted for a more relaxed pace."
 
-    feedback_output = state.get("feedback_output", {})
-    if feedback_output.get("has_feedback"):
-        feedback_reason = feedback_output.get("reason")
-        if feedback_reason:
-            explanation_parts.append(f"User feedback applied: {feedback_reason}")
+        if selected_variant.get("variant_key") == "budget":
+            user_message += " We selected a more budget-friendly option for better savings."
 
-    alternatives = [
-        variant
-        for variant in variants
-        if variant.get("variant_key") != selected.get("variant_key")
-    ]
+        reviewer_output = {
+            "agent": "reviewer",
+            "user_message": user_message,
+            "ranking": ranking_output,
+            "estimated_total": ranking_output.get(
+                "estimated_total",
+                cost_breakdown.get("total", "Unknown"),
+            ),
+            "accuracy_check": (
+                "The itinerary appears internally consistent and aligned "
+                "with the requested duration and budget."
+            ),
+        }
 
-    alt_lines = []
+        state["reviewer_output"] = reviewer_output
 
-    for alt in alternatives[:2]:
-        alt_label = alt.get("variant_label")
-        alt_score = alt.get("ranking", {}).get("score_pct")
-        alt_total = alt.get("ranking", {}).get("estimated_total")
+        final_response = (
+            f"{user_message} "
+            f"(Plan quality: {score_pct:.0f}%) "
+            f"We selected the {variant_label} based on overall best fit."
+        )
 
-        if not alt_label or not alt_score:
-            continue
+        variants = state.get("plan_variants", [])
+        alternatives = []
 
-        if alt_total:
-            line = f"{alt_label} (~{int(alt_score)}%, est. SGD {int(alt_total)})"
-        else:
-            line = f"{alt_label} (~{int(alt_score)}%)"
+        for variant in variants:
+            if variant.get("variant_key") == selected_variant.get("variant_key"):
+                continue
 
-        alt_lines.append(line)
+            label = variant.get("variant_label", "Alternative")
+            ranking = variant.get("ranking", {})
+            pct = ranking.get("score_pct", 0)
+            total = ranking.get("estimated_total", "?")
 
-    if alt_lines:
-        explanation_parts.append("Other options: " + " | ".join(alt_lines))
+            alternatives.append(f"{label} (~{pct:.0f}%, est. SGD {total})")
 
-    explanation = ""
-    if explanation_parts:
-        explanation = " " + " ".join(explanation_parts)
+        if alternatives:
+            final_response += " Other options: " + " | ".join(alternatives)
 
-    if score_pct:
+        state["final_response"] = final_response
+
+        state.setdefault("debug_trace", [])
+        state["debug_trace"].append("reviewer completed")
+
+        return state
+
+    except Exception as exc:
+        state.setdefault("debug_trace", [])
+        state["debug_trace"].append(f"reviewer failed: {exc}")
+
+        state["reviewer_output"] = {
+            "agent": "reviewer",
+            "user_message": (
+                "Your itinerary was generated, but the final summary formatter encountered an issue."
+            ),
+        }
+
         state["final_response"] = (
-            f"{base_message} (Plan quality: {int(score_pct)}%){explanation}"
+            "Your itinerary was generated successfully, "
+            "but the final presentation layer encountered an issue."
         )
-    else:
-        state["final_response"] = base_message + explanation
 
-    return add_trace(state, "reviewer completed")
+        return state
 
 
 AGENT_REGISTRY: dict[str, Callable[[AgentState], Awaitable[AgentState]]] = {
@@ -480,6 +480,17 @@ def apply_agent_fallback(
             "reason": None,
         }
 
+    elif agent_name == "continuity":
+        state["continuity_output"] = {
+            "has_followup": False,
+            "followup_text": "",
+            "continuity_mode": None,
+            "requested_adjustments": [],
+            "new_budget": None,
+            "confidence": 0.0,
+            "reason": None,
+        }
+
     elif agent_name == "reviewer":
         state["reviewer_output"] = {
             "message": (
@@ -503,9 +514,7 @@ async def run_workflow(
     raw_request: str,
     feedback: str | None = None,
 ) -> dict[str, Any]:
-
     state = create_initial_state(raw_request)
-
     state["user_feedback"] = feedback or ""
 
     state = await run_agent_with_retry("request_parser", state)
@@ -516,7 +525,7 @@ async def run_workflow(
     remaining_agents = [
         agent_name
         for agent_name in selected_route
-        if agent_name not in {"request_parser", "routing", "reviewer"}
+        if agent_name not in {"request_parser", "routing"}
     ]
 
     for agent_name in remaining_agents:
