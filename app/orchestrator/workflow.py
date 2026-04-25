@@ -15,6 +15,10 @@ from app.intelligence.feedback_selector import select_variant_from_feedback
 from app.intelligence.personalization import personalize_request
 from app.intelligence.place_resolver import resolve_places
 from app.intelligence.realism import assess_realism
+from app.intelligence.session_memory import (
+    apply_memory_to_raw_request,
+    build_session_memory_snapshot,
+)
 from app.orchestrator.state import AgentState, add_error, add_trace, create_initial_state
 
 
@@ -513,9 +517,17 @@ def apply_agent_fallback(
 async def run_workflow(
     raw_request: str,
     feedback: str | None = None,
+    session_memory: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+
+    raw_request = apply_memory_to_raw_request(
+        raw_request=raw_request,
+        memory=session_memory,
+    )
+
     state = create_initial_state(raw_request)
     state["user_feedback"] = feedback or ""
+    state["input_session_memory"] = session_memory or {}
 
     state = await run_agent_with_retry("request_parser", state)
     state = await run_agent_with_retry("routing", state)
@@ -530,6 +542,8 @@ async def run_workflow(
 
     for agent_name in remaining_agents:
         state = await run_agent_with_retry(agent_name, state)
+
+    state["session_memory"] = build_session_memory_snapshot(state)
 
     return {
         "message": state.get(

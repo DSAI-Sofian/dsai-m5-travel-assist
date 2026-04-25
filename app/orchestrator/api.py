@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+from typing import Any
 from app.orchestrator.workflow import run_workflow
 
 app = FastAPI(title="SEA Travel Planner")
@@ -13,6 +14,7 @@ class TripRequest(BaseModel):
     travelers: int = 1
     preferences: list[str] = []
     feedback: str | None = None
+    session_memory: dict[str, Any] | None = None
 
 def build_raw_request(req: TripRequest) -> str:
     """
@@ -60,6 +62,7 @@ async def plan(req: TripRequest):
     raw_request = build_raw_request(req)
 
     return await run_workflow(
-    raw_request=raw_request,
-    feedback=req.feedback,
+        raw_request=raw_request,
+        feedback=req.feedback,
+        session_memory=req.session_memory,
     )
