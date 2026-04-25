@@ -377,7 +377,7 @@ The bot supports conversational continuity.
 
 | Sprint      | Major Capability                               |
 | ----------- | ---------------------------------------------- |
-| Day 1       | FastAPI + Telegram + Planner/Executor/Reviewer |
+| Day 1 - 2   | FastAPI + Telegram + Planner/Executor/Reviewer |
 | Sprint 3.4  | Deterministic ranking engine                   |
 | Sprint 3.5  | Variant generation                             |
 | Sprint 3.6  | Explainability layer                           |
