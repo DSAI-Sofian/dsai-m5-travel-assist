@@ -314,6 +314,16 @@ def parse_trip_request(text: str) -> dict:
             except Exception:
                 pass
 
+    # Fallback: detect bare trailing amount as budget.
+    # Example: "5 days Vietnam sightseeing 1500"
+    if budget is None:
+        bare_amount_match = re.search(r"\b(\d{3,6})\s*$", lowered)
+        if bare_amount_match:
+            try:
+                budget = int(bare_amount_match.group(1))
+            except Exception:
+                budget = None
+
     destinations = _extract_destinations(lowered)
 
     cleaned_preferences = _clean_preference_text(lowered)
