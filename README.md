@@ -47,7 +47,7 @@ No secrets, user logs, admin chat IDs, or production credentials are stored in t
 
 [Open SEA Travel Planner Bot](https://t.me/sofian_travelplanner_bot)
 
-Reach out to me if there are any destinations that were not included and I will add them in manually. Destination Intelligence is only scheduled to be added in Sprint 8.x.
+Reach out to me if there are any destinations that were not included and I will add them in manually. Destination Intelligence is only scheduled to be implemented and deployed in Sprint 8.x.
 
 ---
 
