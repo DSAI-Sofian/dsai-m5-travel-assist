@@ -43,6 +43,12 @@ No secrets, user logs, admin chat IDs, or production credentials are stored in t
 
 ---
 
+## 🤖 Link to SEA Travel Planner Bot
+
+[Open SEA Travel Planner Bot](https://t.me/your_bot_name)
+
+---
+
 # 🚀 Key Capabilities
 
 ## ✅ Core Features
