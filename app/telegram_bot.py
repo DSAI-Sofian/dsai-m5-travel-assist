@@ -110,15 +110,20 @@ async def start(update, context):
 
     msg = (
         "Welcome to Travel Assist.\n\n"
-        "Send a trip request like:\n"
+        "Hello! Tell me your expected:\n"
+        "[duration] [destination] budget [amount] [preferences]\n\n"
+        "Example:\n"
         "4 days Sabah budget S$1500 diving\n\n"
-        "You can also refine the plan after that:\n"
-        "- cheaper option\n"
-        "- more comfort please\n"
-        "- add more food places\n"
-        "- make it less rushed\n"
-        "- add nature activities\n\n"
-        "All itinerary prices are shown in SGD."
+        "I'll build the itinerary for you.\n\n"
+        "After the itinerary is built, you can choose the options below "
+        "to modify it if needed.\n\n"
+        "Just tell me:\n"
+        "- Cheaper option\n"
+        "- More comfort please\n"
+        "- Less rushed\n"
+        "- Same style as before for new queries\n\n"
+        "All prices listed are tentative. You must approach service providers "
+        "directly for booking and payment."
     )
 
     await update.message.reply_text(msg)
