@@ -19,9 +19,6 @@ app = FastAPI(title="SEA Travel Planner Bot")
 ptb = None
 processed_update_ids = set()
 
-# Lightweight in-memory Telegram session cache.
-# Key: chat_id
-# Value: last valid parsed request payload
 chat_last_payloads = {}
 
 
@@ -80,6 +77,7 @@ def is_followup_request(text: str) -> bool:
         "add more food",
         "add more food places",
         "add nature activities",
+        "nature activities",
         "same style",
         "same style as before",
         "budget saver",
@@ -90,6 +88,79 @@ def is_followup_request(text: str) -> bool:
     ]
 
     return any(phrase in normalized for phrase in followup_phrases)
+
+
+def apply_followup_preferences(payload: dict, text: str) -> dict:
+    normalized = (text or "").strip().lower()
+    updated = dict(payload)
+
+    preferences = updated.get("preferences") or []
+    if not isinstance(preferences, list):
+        preferences = []
+
+    additions = []
+
+    if "nature" in normalized:
+        additions.extend(
+            [
+                "nature",
+                "outdoor",
+                "parks",
+                "scenic viewpoints",
+                "natural attractions",
+            ]
+        )
+
+    if "food" in normalized:
+        additions.extend(
+            [
+                "food",
+                "restaurants",
+                "local cuisine",
+                "street food",
+            ]
+        )
+
+    if "comfort" in normalized:
+        additions.extend(
+            [
+                "comfort",
+                "luxury",
+                "better hotel",
+                "relaxed stay",
+            ]
+        )
+
+    if "less rushed" in normalized or "make it less rushed" in normalized:
+        additions.extend(
+            [
+                "relaxed pace",
+                "less rushed",
+                "fewer activities per day",
+            ]
+        )
+
+    if "activities" in normalized:
+        additions.append("activities")
+
+    if "cheaper" in normalized or "budget saver" in normalized:
+        additions.extend(
+            [
+                "budget",
+                "cost saving",
+                "affordable",
+            ]
+        )
+
+    if "same style" in normalized:
+        additions.append("same style as before")
+
+    for item in additions:
+        if item not in preferences:
+            preferences.append(item)
+
+    updated["preferences"] = preferences
+    return updated
 
 
 async def send_telegram_message(chat_id: int, text: str):
@@ -420,6 +491,7 @@ async def format_and_send(update: Update):
 
     if is_followup_request(text) and chat_id in chat_last_payloads:
         payload = dict(chat_last_payloads[chat_id])
+        payload = apply_followup_preferences(payload, text)
         payload["feedback"] = text
     else:
         payload = parse_trip_request(text)
