@@ -19,6 +19,9 @@ Unlike conventional chatbot-style travel assistants that provide generic recomme
 
 The platform evolved from a simple 3-agent architecture into a modular orchestration framework capable of adaptive travel planning, lightweight memory, and explainable decision-making.
 
+The current implementation is optimized for Southeast Asia travel planning. 
+The system may accept destinations outside Southeast Asia through fallback handling, but destination intelligence, cost assumptions, and itinerary quality are strongest for supported Southeast Asian destinations.
+
 ## ⚖️ Usage & Intellectual Property Notice
 
 This repository is published for portfolio and educational review purposes only.
@@ -36,8 +39,7 @@ It provides:
 - temporary user blocking
 - admin alert support through private environment variables
 
-No secrets, user logs, admin chat IDs, or production credentials are stored in the repository.
-Runtime values are configured through environment variables in Render.
+No secrets, user logs, admin chat IDs, or production credentials are stored in the repository. Runtime values are configured through environment variables in Render.
 
 ---
 
@@ -406,25 +408,36 @@ The bot supports conversational continuity.
 
 # 🧭 Sprint Progression Summary
 
-| Sprint      | Major Capability                               |
-| ----------- | ---------------------------------------------- |
-| Day 1 - 2   | FastAPI + Telegram + Planner/Executor/Reviewer |
-| Sprint 3.4  | Deterministic ranking engine                   |
-| Sprint 3.5  | Variant generation                             |
-| Sprint 3.6  | Explainability layer                           |
-| Sprint 3.7  | Adaptive feedback loop                         |
-| Sprint 3.8  | Conversational continuity                      |
-| Sprint 3.9  | Session memory                                 |
-| Sprint 3.10 | Parser hygiene and leakage filtering           |
-| Sprint 4.1  | Demo-ready API structure                       |
-| Sprint 4.2  | Schema validation and debug gating             |
-| Sprint 4.3  | Submission-grade documentation                 |
+| Sprint      | Major Capability                     |
+| ----------- | ------------------------------------ |
+| Sprint 1.1  | Orchestrator Refactor                |
+| Sprint 1.2  | Agent Registry                       |
+| Sprint 1.3  | Agent Decomposition                  |
+| Sprint 1.4  | Guardrails                           |
+| Sprint 2.1  | Destination Intelligence             |
+| Sprint 2.2  | Pricing Engine                       |
+| Sprint 2.3  | Realism Layer                        |
+| Sprint 2.4  | Personalization                      |
+| Sprint 3.1  | Agent Expansion                      |
+| Sprint 3.2  | Memory Layer                         |
+| Sprint 3.3  | Machine Learning Component           |
+| Sprint 3.4  | Telegram Output formatting           |
+| Sprint 3.5  | Deterministic ranking engine         |
+| Sprint 3.6  | Variant generation                   |
+| Sprint 3.7  | Explainability layer                 |
+| Sprint 3.8  | Adaptive feedback loop               |
+| Sprint 3.9  | Conversational continuity            |
+| Sprint 3.10 | Session memory                       |
+| Sprint 3.11 | Parser hygiene and leakage filtering |
+| Sprint 4.1  | Demo-ready API structure             |
+| Sprint 4.2  | Schema validation and debug gating   |
+| Sprint 4.3  | Submission-grade documentation       |
 
 ---
 
 # 🔮 Future Roadmap
 
-## Sprint 6.x — Real API Integration
+## Sprint 5.x — Real API Integration
 
 Planned additions:
 
@@ -435,7 +448,7 @@ Planned additions:
 
 ---
 
-## Sprint 7.x — Persistent Personalization Memory
+## Sprint 6.x — Persistent Personalization Memory
 
 Planned capabilities:
 
@@ -445,7 +458,7 @@ Planned capabilities:
 
 ---
 
-## Sprint 8.x — Booking Readiness
+## Sprint 7.x — Booking Readiness
 
 Planned enhancements:
 
@@ -455,7 +468,7 @@ Planned enhancements:
 
 ---
 
-## Sprint 9.x — Multi-Destination Intelligence
+## Sprint 8.x — Multi-Destination Intelligence
 
 Future intelligence goals:
 
@@ -465,7 +478,7 @@ Future intelligence goals:
 
 ---
 
-## Sprint 10.x — Agent Scaling
+## Sprint 9.x — Agent Scaling
 
 Target:
 
@@ -480,6 +493,23 @@ Potential future agents:
 * visa intelligence
 * budget optimizer
 * recommendation explainer
+
+---
+
+## Sprint 10.x — Conversational Expansion
+
+Target:
+
+```text
+create more natural user interaction
+```
+
+Potential interactivity:
+
+* Telegram voice support
+* richer conversational follow-ups
+* compact itinerary rendering
+* adaptive interaction styles
 
 ---
 
@@ -554,6 +584,7 @@ This project demonstrates practical implementation of:
 * cloud deployment
 * conversational continuity
 * adaptive personalization
+* lightweight abuse guard
 
 ---
 

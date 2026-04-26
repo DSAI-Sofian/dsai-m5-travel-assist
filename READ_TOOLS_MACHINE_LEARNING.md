@@ -43,11 +43,13 @@ LLM reasoning only where valuable.
 
 This improves:
 
-* consistency
 * explainability
+* consistency
 * reproducibility
-* debugging
+* operational stability
 * operational safety
+* debugging visibility
+* cost control
 
 ---
 
@@ -266,14 +268,15 @@ This reduces:
 
 ## Implemented Controls
 
-| Governance Measure          | Purpose                              |
-| --------------------------- | ------------------------------------ |
-| Schema Validation           | Prevent malformed outputs            |
-| Parser Hygiene Filtering    | Remove noisy user inputs             |
-| Controlled Memory Injection | Prevent memory leakage               |
-| Deterministic Routing       | Reduce hidden behavior               |
-| Debug-State Gating          | Prevent accidental internal exposure |
-| Fallback Orchestration      | Maintain stable UX during failures   |
+| Governance Measure          | Purpose                                 |
+| --------------------------- | --------------------------------------- |
+| Schema Validation           | Prevent malformed outputs               |
+| Parser Hygiene Filtering    | Remove noisy user inputs                |
+| Controlled Memory Injection | Prevent memory leakage                  |
+| Deterministic Routing       | Reduce hidden behavior                  |
+| Debug-State Gating          | Prevent accidental internal exposure    |
+| Fallback Orchestration      | Maintain stable UX during failures      |
+| Lightweight Abuse Guard     | Guard against abuse, irrelevant queries |
 
 ---
 
@@ -281,7 +284,10 @@ This reduces:
 
 ## Planned Enhancements
 
-### Sprint 6.x — Real-Time Intelligence
+The below enhancsements will be included into future sprints planning.
+Refer to **'READ_FUTURE_DEVELOPMENT_GOALS.md'**.
+
+### Real-Time Intelligence
 
 Planned additions:
 
@@ -292,7 +298,7 @@ Planned additions:
 
 ---
 
-### Sprint 7.x — Persistent Learning
+### Persistent Learning
 
 Planned capabilities:
 
@@ -303,7 +309,7 @@ Planned capabilities:
 
 ---
 
-### Sprint 9.x — Advanced Travel Intelligence
+### Advanced Travel Intelligence
 
 Potential future ML enhancements:
 
