@@ -19,11 +19,25 @@ Unlike conventional chatbot-style travel assistants that provide generic recomme
 
 The platform evolved from a simple 3-agent architecture into a modular orchestration framework capable of adaptive travel planning, lightweight memory, and explainable decision-making.
 
-## Usage & Intellectual Property Notice
+## ⚖️ Usage & Intellectual Property Notice
 
 This repository is published for portfolio and educational review purposes only.
 
 No permission is granted to copy, redistribute, modify, commercialize, or reuse the contents of this repository without explicit written permission from the author.
+
+## 🔒 Lightweight Abuse Protection
+
+The Telegram bot includes a lightweight abuse guard that runs before travel planning begins.
+
+It provides:
+
+- user-level rate limiting
+- irrelevant request filtering
+- temporary user blocking
+- admin alert support through private environment variables
+
+No secrets, user logs, admin chat IDs, or production credentials are stored in the repository.
+Runtime values are configured through environment variables in Render.
 
 ---
 
@@ -43,6 +57,7 @@ No permission is granted to copy, redistribute, modify, commercialize, or reuse 
 * Explainability scoring
 * Structured JSON contracts
 * Debug-state visibility
+* Lightweight public abuse guard
 
 ---
 
@@ -50,8 +65,10 @@ No permission is granted to copy, redistribute, modify, commercialize, or reuse 
 
 ## Current Orchestration Pipeline
 
-```text
-request_parser
+```
+User Request
+→ abuse_guard
+→ request_parser
 → routing
 → place_resolver
 → personalization
@@ -70,21 +87,22 @@ request_parser
 
 # ⚙️ Multi-Agent Responsibilities
 
-| Agent                | Responsibility                                      | Guardrails                      |
-| -------------------- | --------------------------------------------------- | ------------------------------- |
-| Request Parser       | Extracts destination, duration, budget, preferences | Parser hygiene filtering        |
-| Routing Agent        | Determines active orchestration path                | Conditional execution           |
-| Place Resolver       | Maps destinations and gateways                      | Prevents destination drift      |
-| Personalization      | Infers travel style and preferences                 | Controlled preference injection |
-| Planner              | Generates structured planning assumptions           | Scope control                   |
-| Executor             | Produces itinerary and travel details               | Structured JSON outputs         |
-| Realism              | Evaluates pacing and feasibility                    | Avoids unrealistic itineraries  |
-| Variant Engine       | Creates multiple plan variants                      | Deterministic transformations   |
-| Ranking Engine       | Scores and selects best variant                     | Weighted explainable scoring    |
-| Feedback Interpreter | Applies user follow-up intent                       | Controlled mutation             |
-| Continuity Layer     | Maintains conversational coherence                  | Context isolation               |
-| Session Memory       | Reuses lightweight preferences                      | Memory leakage filtering        |
-| Reviewer             | Final validation and tone refinement                | Budget and consistency checks   |
+| Agent                | Responsibility                                                       | Guardrails                      |
+| -------------------- | -------------------------------------------------------------------- | ------------------------------- |
+| Abuse Guard          | Pre-Orchestration defensive gateway that validates incoming requests | Context filtering               |
+| Request Parser       | Extracts destination, duration, budget, preferences                  | Parser hygiene filtering        |
+| Routing Agent        | Determines active orchestration path                                 | Conditional execution           |
+| Place Resolver       | Maps destinations and gateways                                       | Prevents destination drift      |
+| Personalization      | Infers travel style and preferences                                  | Controlled preference injection |
+| Planner              | Generates structured planning assumptions                            | Scope control                   |
+| Executor             | Produces itinerary and travel details                                | Structured JSON outputs         |
+| Realism              | Evaluates pacing and feasibility                                     | Avoids unrealistic itineraries  |
+| Variant Engine       | Creates multiple plan variants                                       | Deterministic transformations   |
+| Ranking Engine       | Scores and selects best variant                                      | Weighted explainable scoring    |
+| Feedback Interpreter | Applies user follow-up intent                                        | Controlled mutation             |
+| Continuity Layer     | Maintains conversational coherence                                   | Context isolation               |
+| Session Memory       | Reuses lightweight preferences                                       | Memory leakage filtering        |
+| Reviewer             | Final validation and tone refinement                                 | Budget and consistency checks   |
 
 ---
 
@@ -182,33 +200,46 @@ Other options:
 # 📁 Project Structure
 
 ```text
-app/
-├── agents/
-│   ├── planner.py
+app
+├── agents
+│   ├── core
+│   │   ├── constraint_agent.py
+│   │   └── intent_agent.py
 │   ├── executor.py
-│   ├── reviewer.py
+│   ├── planner.py
 │   ├── ranking.py
-│   ├── variant.py
-│
-├── intelligence/
-│   ├── realism.py
+│   ├── registry.py
+│   ├── reviewer.py
+│   ├── router.py
+│   └── variant.py
+├── common
+│   ├── config.py
+│   ├── destination_normalizer.py
+│   ├── guardrails.py
+│   ├── openai_client.py
+│   └── request_parser.py
+├── intelligence
+│   ├── conversation_interpreter.py
+│   ├── destination_mapper.py
+│   ├── feedback_interpreter.py
+│   ├── feedback_selector.py
 │   ├── personalization.py
 │   ├── place_resolver.py
-│
-├── orchestrator/
-│   ├── workflow.py
-│   ├── state.py
-│
-├── pricing/
-│   ├── engine.py
-│
-├── common/
-│   ├── request_parser.py
-│   ├── openai_client.py
-│
-├── session_memory.py
-├── telegram_bot.py
+│   ├── realism.py
+│   └── session_memory.py
 ├── main.py
+├── orchestrator
+│   ├── api.py
+│   ├── state.py
+│   └── workflow.py
+├── pricing
+│   └── engine.py
+├── security
+│   ├── __init__.py
+│   └── abuse_guard.py
+├── telegram_bot.py
+└── tools
+    └── travel.py
 ```
 
 ---
@@ -541,6 +572,6 @@ Users should independently verify travel requirements and pricing before making 
 
 ---
 
-# 👤 Author
+# 👤 Author - Sofian Bin Sidik (S7525372/I)
 
 Developed as part of an AI Engineering and Data Science portfolio initiative focused on explainable multi-agent orchestration systems.

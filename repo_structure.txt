@@ -1,0 +1,69 @@
+.
+├── .codex
+├── .env
+├── .env.example
+├── .gitignore
+├── AGENT.md
+├── Dockerfile
+├── LICENSE.txt
+├── README.md
+├── TOOLS_MACHINE_LEARNING.md
+├── app
+│   ├── agents
+│   │   ├── core
+│   │   │   ├── constraint_agent.py
+│   │   │   └── intent_agent.py
+│   │   ├── executor.py
+│   │   ├── planner.py
+│   │   ├── ranking.py
+│   │   ├── registry.py
+│   │   ├── reviewer.py
+│   │   ├── router.py
+│   │   └── variant.py
+│   ├── common
+│   │   ├── config.py
+│   │   ├── destination_normalizer.py
+│   │   ├── guardrails.py
+│   │   ├── openai_client.py
+│   │   └── request_parser.py
+│   ├── intelligence
+│   │   ├── conversation_interpreter.py
+│   │   ├── destination_mapper.py
+│   │   ├── feedback_interpreter.py
+│   │   ├── feedback_selector.py
+│   │   ├── personalization.py
+│   │   ├── place_resolver.py
+│   │   ├── realism.py
+│   │   └── session_memory.py
+│   ├── main.py
+│   ├── orchestrator
+│   │   ├── api.py
+│   │   ├── state.py
+│   │   └── workflow.py
+│   ├── pricing
+│   │   └── engine.py
+│   ├── security
+│   │   ├── __init__.py
+│   │   └── abuse_guard.py
+│   ├── telegram_bot.py
+│   └── tools
+│       └── travel.py
+├── deploy
+│   ├── docker-compose.yml
+│   ├── otel-collector.yml
+│   └── traefik
+│       ├── dynamic.yml
+│       └── traefik.yml
+├── docs
+│   ├── Travelbot_Upgrade_Latest.xlsx
+│   ├── Travelbot_Upgrade_ORIGINAL.xlsx
+│   └── UPGRADE_REQUIREMENTS.md
+├── huggingface
+│   ├── DEPLOYMENT_CHECKLIST.md
+│   └── README_HF.md
+├── production_basics.meta.json
+├── repo_structure.txt
+├── requirements.txt
+└── starter_bundle.meta.json
+
+14 directories, 53 files
