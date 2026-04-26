@@ -47,6 +47,8 @@ No secrets, user logs, admin chat IDs, or production credentials are stored in t
 
 [Open SEA Travel Planner Bot](https://t.me/sofian_travelplanner_bot)
 
+Reach out to me if there are any destinations that were not included and I will add them in manually. Destination Intelligence is only scheduled to be added in Sprint 8.x.
+
 ---
 
 # 🚀 Key Capabilities
@@ -73,7 +75,7 @@ The current implementation may accept multi-city requests through fallback handl
 
 For best results, users should submit one primary destination per request.
 
-Full multi-destination intelligence is planned for Sprint 9.x, including:
+Full multi-destination intelligence is planned for Sprint 8.x, including:
 
 - route optimization
 - destination sequencing
@@ -513,7 +515,6 @@ Potential future agents:
 * visa intelligence
 * budget optimizer
 * recommendation explainer
-* multi-city intelligence
 
 ---
 
