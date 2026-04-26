@@ -4,44 +4,201 @@ from datetime import date, timedelta
 from app.common.destination_normalizer import normalize_destinations
 
 
-KNOWN_DESTINATIONS = [
-    "east malaysia",
-    "west malaysia",
-    "peninsular malaysia",
-    "malaysia",
-    "indonesia",
-    "thailand",
-    "vietnam",
-    "kuala lumpur",
-    "kl",
-    "bandung",
-    "jakarta",
-    "bali",
-    "denpasar",
-    "penang",
-    "pg",
-    "malacca",
-    "melaka",
-    "singapore",
-    "sg",
-    "johor bahru",
-    "jb",
-    "yogyakarta",
-    "jogja",
-    "surabaya",
-    "bangkok",
-    "phuket",
-    "chiang mai",
-    "ho chi minh",
-    "hcm",
-    "saigon",
-    "hanoi",
-    "sabah",
-    "kota kinabalu",
-    "kk",
-    "sandakan",
-    "tawau",
-]
+KNOWN_DESTINATIONS = {
+    "malaysia": {
+        "country": ["malaysia"],
+        "regions": [
+            "east malaysia",
+            "west malaysia",
+            "peninsular malaysia",
+            "sabah",
+            "sarawak",
+            "penang",
+            "langkawi",
+            "genting",
+            "genting highlands",
+            "cameron highlands",
+            "perhentian islands",
+            "redang",
+            "tioman",
+        ],
+        "cities": [
+            "kuala lumpur",
+            "kl",
+            "george town",
+            "kota kinabalu",
+            "kk",
+            "kuching",
+            "melaka",
+            "malacca",
+            "johor bahru",
+            "jb",
+            "ipoh",
+            "sandakan",
+            "tawau",
+            "miri",
+            "kuantan",
+            "kuala terengganu",
+            "alor setar",
+        ],
+    },
+    "singapore": {
+        "country": ["singapore", "sg"],
+        "regions": [
+            "sentosa",
+            "marina bay",
+            "orchard",
+            "chinatown",
+            "little india",
+        ],
+        "cities": [
+            "singapore",
+        ],
+    },
+    "thailand": {
+        "country": ["thailand"],
+        "regions": [
+            "phuket",
+            "krabi",
+            "koh samui",
+            "phi phi",
+            "koh phi phi",
+            "koh tao",
+            "koh phangan",
+        ],
+        "cities": [
+            "bangkok",
+            "chiang mai",
+            "chiang rai",
+            "pattaya",
+            "hua hin",
+            "ayutthaya",
+        ],
+    },
+    "indonesia": {
+        "country": ["indonesia"],
+        "regions": [
+            "bali",
+            "lombok",
+            "komodo",
+            "java",
+            "sumatra",
+            "raja ampat",
+            "gili islands",
+        ],
+        "cities": [
+            "jakarta",
+            "bandung",
+            "yogyakarta",
+            "jogja",
+            "surabaya",
+            "denpasar",
+            "ubud",
+            "medan",
+            "makassar",
+        ],
+    },
+    "vietnam": {
+        "country": ["vietnam"],
+        "regions": [
+            "halong bay",
+            "ha long bay",
+            "sapa",
+            "mekong delta",
+            "phu quoc",
+        ],
+        "cities": [
+            "hanoi",
+            "ho chi minh",
+            "ho chi minh city",
+            "hcm",
+            "saigon",
+            "da nang",
+            "hoi an",
+            "hue",
+            "nha trang",
+            "da lat",
+        ],
+    },
+    "philippines": {
+        "country": ["philippines"],
+        "regions": [
+            "palawan",
+            "boracay",
+            "cebu",
+            "bohol",
+            "siargao",
+            "coron",
+            "el nido",
+        ],
+        "cities": [
+            "manila",
+            "cebu city",
+            "davao",
+            "iloilo",
+        ],
+    },
+    "cambodia": {
+        "country": ["cambodia"],
+        "regions": [
+            "angkor",
+            "angkor wat",
+        ],
+        "cities": [
+            "phnom penh",
+            "siem reap",
+            "sihanoukville",
+            "kampot",
+        ],
+    },
+    "laos": {
+        "country": ["laos"],
+        "regions": [],
+        "cities": [
+            "vientiane",
+            "luang prabang",
+            "vang vieng",
+            "pakse",
+        ],
+    },
+    "myanmar": {
+        "country": ["myanmar", "burma"],
+        "regions": [
+            "bagan",
+            "inle lake",
+        ],
+        "cities": [
+            "yangon",
+            "mandalay",
+            "naypyidaw",
+        ],
+    },
+    "brunei": {
+        "country": ["brunei"],
+        "regions": [],
+        "cities": [
+            "bandar seri begawan",
+        ],
+    },
+}
+
+
+def _build_all_destinations() -> list[str]:
+    destinations = []
+
+    for country_data in KNOWN_DESTINATIONS.values():
+        destinations.extend(country_data.get("country", []))
+        destinations.extend(country_data.get("regions", []))
+        destinations.extend(country_data.get("cities", []))
+
+    # Remove duplicates while preserving order.
+    deduped = list(dict.fromkeys(destinations))
+
+    # Match longer names first so "ho chi minh city" is detected before "ho chi minh".
+    return sorted(deduped, key=len, reverse=True)
+
+
+ALL_DESTINATIONS = _build_all_destinations()
 
 
 PREFERENCE_NOISE_TOKENS = {
@@ -61,6 +218,12 @@ PREFERENCE_NOISE_TOKENS = {
     "want",
     "i",
     "than",
+    "under",
+    "below",
+    "trip",
+    "travel",
+    "days",
+    "day",
 }
 
 
@@ -88,10 +251,10 @@ def _clean_preference_text(text: str) -> str:
     cleaned = re.sub(r"\bs\$\s*\d+\b", " ", cleaned)
     cleaned = re.sub(r"\$\s*\d+\b", " ", cleaned)
 
-    for dest in KNOWN_DESTINATIONS:
+    for dest in ALL_DESTINATIONS:
         cleaned = re.sub(rf"\b{re.escape(dest)}\b", " ", cleaned)
 
-    cleaned = re.sub(r"\b(in|to|for|from|with|and)\b", " ", cleaned)
+    cleaned = re.sub(r"\b(in|to|for|from|with|and|at|near)\b", " ", cleaned)
     cleaned = re.sub(r"[^a-z0-9\s,]", " ", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
 
@@ -104,6 +267,19 @@ def _clean_preference_text(text: str) -> str:
     return " ".join(tokens).strip()
 
 
+def _extract_destinations(text: str) -> list[str]:
+    found_destinations = []
+
+    for dest in ALL_DESTINATIONS:
+        if re.search(rf"\b{re.escape(dest)}\b", text):
+            found_destinations.append(dest)
+
+    if not found_destinations:
+        return []
+
+    return normalize_destinations(found_destinations)
+
+
 def parse_trip_request(text: str) -> dict:
     raw = (text or "").strip()
     lowered = raw.lower()
@@ -112,7 +288,6 @@ def parse_trip_request(text: str) -> dict:
 
     duration_days = 5
     budget = None
-    destinations = []
 
     duration_match = re.search(r"(\d+)\s*(day|days|d)\b", parse_scope)
     if duration_match:
@@ -139,14 +314,7 @@ def parse_trip_request(text: str) -> dict:
             except Exception:
                 pass
 
-    found_destinations = []
-
-    for dest in KNOWN_DESTINATIONS:
-        if re.search(rf"\b{re.escape(dest)}\b", lowered):
-            found_destinations.append(dest)
-
-    if found_destinations:
-        destinations = normalize_destinations(found_destinations)
+    destinations = _extract_destinations(lowered)
 
     cleaned_preferences = _clean_preference_text(lowered)
 
