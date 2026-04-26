@@ -10,8 +10,8 @@ SEA Travel Planner is a multi-agent AI-powered travel assistant designed to gene
 
 Unlike conventional chatbot-style travel assistants that provide generic recommendations, this system focuses on:
 
-* structured outputs
-* deterministic scoring
+* structured outputs for single destinations
+* deterministic scoring for multiple activities within single location
 * explainable orchestration
 * realism-aware planning
 * budget validation
@@ -66,6 +66,20 @@ No secrets, user logs, admin chat IDs, or production credentials are stored in t
 * Structured JSON contracts
 * Debug-state visibility
 * Lightweight public abuse guard
+
+## 🏙️ Multi-City Planning Status
+
+The current implementation may accept multi-city requests through fallback handling, but it is not yet fully optimized for route sequencing or inter-city travel feasibility.
+
+For best results, users should submit one primary destination per request.
+
+Full multi-destination intelligence is planned for Sprint 9.x, including:
+
+- route optimization
+- destination sequencing
+- inter-city travel-time checks
+- regional gateway logic
+- improved multi-city cost estimation
 
 ---
 
@@ -499,6 +513,7 @@ Potential future agents:
 * visa intelligence
 * budget optimizer
 * recommendation explainer
+* multi-city intelligence
 
 ---
 
@@ -612,3 +627,16 @@ Users should independently verify travel requirements and pricing before making 
 # 👤 Author - Sofian Bin Sidik (S7525372/I)
 
 Developed as part of an AI Engineering and Data Science portfolio initiative focused on explainable multi-agent orchestration systems.
+
+## 💬 Feedback & Suggested Improvements
+
+Reviewers may suggest improvements by opening a GitHub Issue in this repository.
+
+Please use Issues for:
+
+- bug reports
+- documentation suggestions
+- feature ideas
+- improvement recommendations
+
+Pull Requests may be reviewed, but this repository is primarily maintained as a portfolio and educational review project.
