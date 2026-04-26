@@ -315,12 +315,47 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
     return "\n".join(msg)
 
 
+def is_greeting_or_basic_help(text: str) -> bool:
+    normalized = (text or "").strip().lower()
+
+    greetings = {
+        "hello",
+        "hi",
+        "hey",
+        "good morning",
+        "good afternoon",
+        "good evening",
+        "help",
+    }
+
+    return normalized in greetings
+
+
 async def format_and_send(update: Update):
     global ptb
 
     text = update.message.text if update.message else ""
     chat_id = update.effective_chat.id
 
+    if is_greeting_or_basic_help(text):
+        await send_telegram_message(
+            chat_id,
+            (
+                "Hello! Tell me your expected:\n"
+                "[duration] [destination] budget [amount] [preferences]\n\n"
+                "Example:\n"
+                "4 days Sabah budget S$1500 diving\n\n"
+                "After the itinerary is built, you can modify it by saying:\n"
+                "- Cheaper option\n"
+                "- More comfort please\n"
+                "- Less rushed\n"
+                "- Same style as before for new queries\n\n"
+                "All prices listed are tentative. Please approach service providers "
+                "directly for booking and payment."
+            ),
+        )
+        return
+    
     telegram_user = update.effective_user
     telegram_user_id = str(telegram_user.id) if telegram_user else "unknown"
     telegram_username = (
