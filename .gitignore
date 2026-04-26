@@ -123,3 +123,6 @@ Dockerfile
 
 # Internal metadata
 *.meta.json
+
+# Internal security logic
+app/security/
