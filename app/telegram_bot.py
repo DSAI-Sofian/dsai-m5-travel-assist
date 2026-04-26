@@ -19,6 +19,11 @@ app = FastAPI(title="SEA Travel Planner Bot")
 ptb = None
 processed_update_ids = set()
 
+# Lightweight in-memory Telegram session cache.
+# Key: chat_id
+# Value: last valid parsed request payload
+chat_last_payloads = {}
+
 
 def _format_money(value) -> str:
     if value is None:
@@ -42,6 +47,49 @@ def _safe_list(items, limit=3):
     if not isinstance(items, list):
         return []
     return items[:limit]
+
+
+def is_greeting_or_basic_help(text: str) -> bool:
+    normalized = (text or "").strip().lower()
+
+    greetings = {
+        "hello",
+        "hi",
+        "hey",
+        "good morning",
+        "good afternoon",
+        "good evening",
+        "help",
+    }
+
+    return normalized in greetings
+
+
+def is_followup_request(text: str) -> bool:
+    normalized = (text or "").strip().lower()
+
+    followup_phrases = [
+        "cheaper",
+        "cheaper option",
+        "more comfort",
+        "more comfort please",
+        "less rushed",
+        "make it less rushed",
+        "more activities",
+        "add more",
+        "add more food",
+        "add more food places",
+        "add nature activities",
+        "same style",
+        "same style as before",
+        "budget saver",
+        "comfort upgrade",
+        "balanced",
+        "another option",
+        "try again",
+    ]
+
+    return any(phrase in normalized for phrase in followup_phrases)
 
 
 async def send_telegram_message(chat_id: int, text: str):
@@ -315,24 +363,8 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
     return "\n".join(msg)
 
 
-def is_greeting_or_basic_help(text: str) -> bool:
-    normalized = (text or "").strip().lower()
-
-    greetings = {
-        "hello",
-        "hi",
-        "hey",
-        "good morning",
-        "good afternoon",
-        "good evening",
-        "help",
-    }
-
-    return normalized in greetings
-
-
 async def format_and_send(update: Update):
-    global ptb
+    global ptb, chat_last_payloads
 
     text = update.message.text if update.message else ""
     chat_id = update.effective_chat.id
@@ -355,7 +387,7 @@ async def format_and_send(update: Update):
             ),
         )
         return
-    
+
     telegram_user = update.effective_user
     telegram_user_id = str(telegram_user.id) if telegram_user else "unknown"
     telegram_username = (
@@ -386,8 +418,12 @@ async def format_and_send(update: Update):
         )
         return
 
-    payload = parse_trip_request(text)
-    payload["feedback"] = None
+    if is_followup_request(text) and chat_id in chat_last_payloads:
+        payload = dict(chat_last_payloads[chat_id])
+        payload["feedback"] = text
+    else:
+        payload = parse_trip_request(text)
+        payload["feedback"] = None
 
     await ptb.bot.send_chat_action(chat_id=chat_id, action="typing")
 
@@ -406,6 +442,13 @@ async def format_and_send(update: Update):
             response = await client.post(f"{backend_base}/plan", json=payload)
             response.raise_for_status()
             result = response.json()
+
+            request_from_result = result.get("request")
+            if isinstance(request_from_result, dict):
+                chat_last_payloads[chat_id] = request_from_result
+            else:
+                chat_last_payloads[chat_id] = payload
+
     except Exception as exc:
         progress_task.cancel()
 
