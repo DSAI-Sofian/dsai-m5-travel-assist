@@ -7,11 +7,13 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 from app.common.request_parser import parse_trip_request
+from app.security.abuse_guard import abuse_guard
 
 
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 WEBHOOK_URL = os.environ.get("TELEGRAM_WEBHOOK_URL")
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000")
+ADMIN_TELEGRAM_CHAT_ID = os.environ.get("ADMIN_TELEGRAM_CHAT_ID")
 
 app = FastAPI(title="SEA Travel Planner Bot")
 ptb = None
@@ -52,6 +54,33 @@ async def send_telegram_message(chat_id: int, text: str):
                 "disable_web_page_preview": True,
             },
         )
+
+
+async def send_admin_alert(
+    user_id: str,
+    username: str,
+    chat_id: str,
+    message_text: str,
+    action: str,
+    reason: str,
+) -> None:
+    if not ADMIN_TELEGRAM_CHAT_ID:
+        return
+
+    alert = (
+        "⚠️ Travel Bot Security Alert\n\n"
+        f"User ID: {user_id}\n"
+        f"Username: @{username}\n"
+        f"Chat ID: {chat_id}\n"
+        f"Action: {action}\n"
+        f"Reason: {reason}\n\n"
+        f"Message:\n{message_text[:1000]}"
+    )
+
+    try:
+        await send_telegram_message(int(ADMIN_TELEGRAM_CHAT_ID), alert)
+    except Exception:
+        pass
 
 
 async def progress_updater(chat_id: int, message_id: int):
@@ -254,7 +283,6 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
     variants = result.get("variants", []) or []
 
     for variant in variants:
-
         label = variant.get("variant_label", "Alternative")
         v_ranking = variant.get("ranking", {}) or {}
         pct = v_ranking.get("score_pct")
@@ -287,6 +315,36 @@ async def format_and_send(update: Update):
 
     text = update.message.text if update.message else ""
     chat_id = update.effective_chat.id
+
+    telegram_user = update.effective_user
+    telegram_user_id = str(telegram_user.id) if telegram_user else "unknown"
+    telegram_username = (
+        telegram_user.username
+        if telegram_user and telegram_user.username
+        else "unknown"
+    )
+
+    decision = abuse_guard.evaluate(
+        user_id=telegram_user_id,
+        message_text=text,
+    )
+
+    if decision.alert_admin:
+        await send_admin_alert(
+            user_id=telegram_user_id,
+            username=telegram_username,
+            chat_id=str(chat_id),
+            message_text=text,
+            action=decision.action,
+            reason=decision.reason,
+        )
+
+    if not decision.allowed:
+        await send_telegram_message(
+            chat_id,
+            decision.user_message or "Request blocked for safety reasons.",
+        )
+        return
 
     payload = parse_trip_request(text)
     payload["feedback"] = None
