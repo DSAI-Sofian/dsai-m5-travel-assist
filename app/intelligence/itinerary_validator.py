@@ -37,6 +37,8 @@ def _clean_text(text: str) -> str:
 
     for old, new in replacements.items():
         cleaned = cleaned.replace(old, new)
+    
+    cleaned = cleaned.replace("visitinging", "visiting")
 
     while "  " in cleaned:
         cleaned = cleaned.replace("  ", " ")
