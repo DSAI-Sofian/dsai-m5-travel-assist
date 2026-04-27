@@ -57,7 +57,7 @@ This improves:
 
 ## Hybrid Intelligence Model
 
-```text id="7l31l6"
+```text
 User Request
       ↓
 Deterministic Parsing
@@ -66,9 +66,23 @@ Rule-Based Routing
       ↓
 LLM Planning & Generation
       ↓
-Deterministic Scoring
+Structured Itinerary Construction
       ↓
-Explainable Selection
+Activity Metadata Intelligence
+      ↓
+Narrative Enrichment
+      ↓
+Realism Assessment
+      ↓
+Variant Generation
+      ↓
+Deterministic Ranking
+      ↓
+Validation
+      ↓
+Automatic Repair
+      ↓
+Revalidation
       ↓
 Structured Response
 ```
@@ -86,34 +100,36 @@ The system supports free-text travel requests such as:
 ```
 
 The parser extracts:
-
 * destination
 * duration
 * budget
 * travel preferences
 * travel style hints
-
+* pacing indicators
+* follow-up intent modifiers
+  
 ### Current Technique
-
 * regex-assisted parsing
 * keyword extraction
 * lightweight intent interpretation
+* deterministic routing hints
+* structured preference normalization
 
 ### Why This Approach Was Chosen
 
-Benefits:
-
+**Benefits:**
 * lightweight
 * explainable
 * predictable
 * easy to debug
 * low operational cost
+* highly controllable
 
-Avoids:
-
+**Avoids:**
 * unnecessary ML complexity
 * hidden inference behaviors
 * heavy NLP infrastructure
+* opaque ranking decisions
 
 ---
 
@@ -125,22 +141,37 @@ The Planner Agent uses the OpenAI API to:
 * generate itinerary concepts
 * produce travel assumptions
 * infer activity themes
+* assist itinerary narrative generation
 
-## LLM Usage Scope
+## Current Orchestration Philosophy
 
-The LLM is intentionally constrained mainly to:
+The system intentionally limits direct LLM control over critical orchestration paths.
 
-| Function             | LLM Usage |
+### Deterministic Layers Handle
+
+| Capability                    | Deterministic Layer |
+| ----------------------------- | ------------------- |
+| Budget scoring                | ✅                   |
+| Realism validation            | ✅                   |
+| Variant ranking               | ✅                   |
+| Routing logic                 | ✅                   |
+| Activity timing validation    | ✅                   |
+| Geographic activity isolation | ✅                   |
+| Itinerary repair              | ✅                   |
+| Validation & revalidation     | ✅                   |
+| Diversity balancing           | ✅                   |
+
+### LLM-Assisted Layers
+
+| Capability           | LLM Usage |
 | -------------------- | --------- |
-| Planning             | ✅         |
-| Itinerary generation | ✅         |
+| Planning concepts    | ✅         |
+| Narrative generation | ✅         |
 | Creative suggestions | ✅         |
-| Budget scoring       | ❌         |
-| Realism validation   | ❌         |
-| Variant ranking      | ❌         |
-| Routing logic        | ❌         |
+| Tone refinement      | ✅         |
+| Semantic enrichment  | Partial   |
 
-This minimizes hallucination risk and improves deterministic reliability.
+This hybrid architecture minimizes hallucination risk while preserving flexible travel recommendations.
 
 ---
 
@@ -184,31 +215,20 @@ This provides:
 
 ---
 
-# 🧪 4. Realism Intelligence Layer
+# 🧪 4. Sprint 6.x Improvements
 
-The realism engine evaluates whether an itinerary is:
+Sprint 6.x introduced:
+* deterministic itinerary chunking
+* geographic activity isolation
+* transition-day logic
+* meal-aware activity timing
+* activity diversity controls
+* structured pacing support
+* self-correcting validation loops
+* automatic itinerary repair
+* revalidation-aware orchestration
 
-* too rushed
-* underutilized
-* balanced
-* impractical
-
-### Current Factors Considered
-
-* trip duration
-* activity density
-* travel pacing
-* destination suitability
-
-### Example Output
-
-```text id="p1mjlwm"
-Pacing: Balanced
-Feasibility: High
-Recommended Stay: 4–5 days
-```
-
-This improves user trust and practical usability.
+This significantly improved long-duration itinerary realism.
 
 ---
 
@@ -227,40 +247,74 @@ The personalization layer infers travel preferences using deterministic logic.
 
 ---
 
-# 🔁 6. Conversational Continuity System
+# 🧩 5A. Activity Metadata Intelligence
 
-The platform includes lightweight session memory and adaptive feedback handling.
+Sprint 6.x introduced structured activity metadata orchestration.
 
-Supported follow-ups include:
+The platform now classifies activities into deterministic semantic categories.
 
-```text id="b78cwq"
-"Cheaper option"
-"More comfort please"
-"Less rushed"
-"Same style as before"
+## Current Metadata Types
+
+| Metadata Category | Example        |
+| ----------------- | -------------- |
+| Food              | pho dinner     |
+| Culture           | temple visit   |
+| Nature            | beach walk     |
+| Sightseeing       | city viewpoint |
+| Experience        | cooking class  |
+
+## Meal-Aware Timing Logic
+
+The system now validates meal suitability against itinerary slots.
+
+Example:
+
+| Activity       | Preferred Timing    |
+| -------------- | ------------------- |
+| pho breakfast  | morning             |
+| seafood dinner | evening             |
+| coffee stop    | morning / afternoon |
+| cooking class  | afternoon / evening |
+
+This prevents unrealistic outputs such as:
+
+```text
+pho breakfast at dinner
+seafood dinner at lunch
 ```
 
-The system recomputes downstream orchestration without regenerating the entire workflow unnecessarily.
+## Diversity Engine
+
+The itinerary generator now reduces excessive repetition by:
+* tracking recent activities
+* rotating fallback selections
+* balancing thematic density
+* applying deterministic replacement logic
+
+---
+
+# 🔁 6. Sprint 6.x Enhancements
+
+The continuity layer now operates alongside:
+* itinerary validation
+* automatic repair logic
+* diversity-aware generation
+* transition-aware itinerary updates
+* pacing-aware itinerary refinement
+
+This allows follow-up interactions to remain structurally consistent across itinerary revisions.
 
 ---
 
 # 🧱 7. Structured Output Engineering
 
-A major engineering goal of this project is controlled AI output generation.
-
-The platform uses:
-
-* strict JSON contracts
-* schema validation
-* defensive parsing
-* fallback orchestration
-* deterministic post-processing
-
 This reduces:
-
 * malformed outputs
 * hallucinated structures
 * orchestration instability
+* repeated itinerary sections
+* semantic timing conflicts
+* unrealistic activity placement
 
 ---
 
@@ -268,15 +322,20 @@ This reduces:
 
 ## Implemented Controls
 
-| Governance Measure          | Purpose                                 |
-| --------------------------- | --------------------------------------- |
-| Schema Validation           | Prevent malformed outputs               |
-| Parser Hygiene Filtering    | Remove noisy user inputs                |
-| Controlled Memory Injection | Prevent memory leakage                  |
-| Deterministic Routing       | Reduce hidden behavior                  |
-| Debug-State Gating          | Prevent accidental internal exposure    |
-| Fallback Orchestration      | Maintain stable UX during failures      |
-| Lightweight Abuse Guard     | Guard against abuse, irrelevant queries |
+| Governance Measure          | Purpose                                     |
+| --------------------------- | ------------------------------------------- |
+| Schema Validation           | Prevent malformed outputs                   |
+| Parser Hygiene Filtering    | Remove noisy user inputs                    |
+| Controlled Memory Injection | Prevent memory leakage                      |
+| Deterministic Routing       | Reduce hidden behavior                      |
+| Debug-State Gating          | Prevent accidental internal exposure        |
+| Fallback Orchestration      | Maintain stable UX during failures          |
+| Lightweight Abuse Guard     | Guard against abuse and irrelevant requests |
+| Geographic Isolation Logic  | Prevent cross-city itinerary leakage        |
+| Meal Timing Validation      | Prevent unrealistic meal scheduling         |
+| Diversity Validation        | Reduce repeated itinerary activities        |
+| Automatic Repair Layer      | Repair weak itinerary structures            |
+| Revalidation Engine         | Confirm repaired itinerary consistency      |
 
 ---
 
@@ -284,10 +343,38 @@ This reduces:
 
 ## Planned Enhancements
 
-The below enhancsements will be included into future sprints planning.
+The below enhancements will be included into future sprint planning.
 Refer to **'READ_FUTURE_DEVELOPMENT_GOALS.md'**.
 
-### Real-Time Intelligence
+---
+
+## Sprint 7.x — Controlled LLM Semantic Polishing
+
+Planned enhancements:
+
+* controlled sentence rewriting
+* semantic itinerary polishing
+* reviewer-assisted semantic cleanup
+* adaptive narrative refinement
+* deterministic-to-LLM orchestration safety
+* structured rewrite constraints
+
+---
+
+## Sprint 8.x — Advanced Destination Intelligence
+
+Planned additions:
+
+* route optimization
+* multi-city sequencing
+* travel-time estimation
+* regional gateway intelligence
+* transport feasibility scoring
+* destination intelligence scaling
+
+---
+
+## Sprint 9.x — Real-Time Intelligence
 
 Planned additions:
 
@@ -295,10 +382,11 @@ Planned additions:
 * hotel APIs
 * normalized pricing intelligence
 * API fallback handling
+* availability-aware recommendations
 
 ---
 
-### Persistent Learning
+## Sprint 10.x — Persistent Learning
 
 Planned capabilities:
 
@@ -306,17 +394,19 @@ Planned capabilities:
 * adaptive scoring weights
 * preference evolution
 * user-specific ranking optimization
+* long-term travel preference retention
 
 ---
 
-### Advanced Travel Intelligence
+## Sprint 11.x — Advanced Travel Intelligence
 
 Potential future ML enhancements:
 
-* route optimization
-* multi-city sequencing
-* travel-time prediction
 * recommendation ranking models
+* adaptive pacing models
+* route optimization scoring
+* travel-density prediction
+* semantic recommendation refinement
 
 ---
 
@@ -329,11 +419,24 @@ Not every problem should be solved with more AI.
 ```
 
 Instead, the system combines:
-
 * deterministic engineering
 * lightweight intelligence
 * modular orchestration
 * controlled LLM usage
 * explainable outputs
+* validation-aware workflows
+* automatic repair pipelines
+* structured metadata systems
+* realism-aware itinerary generation
 
-This creates a more stable, production-oriented travel assistant rather than a purely generative chatbot.
+The result is a more stable, explainable, and production-oriented travel assistant rather than a purely generative chatbot.
+
+The current architecture now demonstrates:
+* multi-agent orchestration
+* deterministic ranking systems
+* validation-aware itinerary generation
+* geographic intelligence
+* semantic repair workflows
+* lightweight personalization
+* structured pacing orchestration
+* explainable travel planning pipelines
