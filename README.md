@@ -559,16 +559,21 @@ The bot supports conversational continuity.
 
 # 🔮 Future Roadmap
 
-## Sprint 7.x — Controlled LLM Semantic Polishing
+## Sprint 7.x — Budget Feasibility & Semantic Intelligence
 
 Planned enhancements:
 
-* controlled sentence rewriting
-* semantic itinerary polishing
-* safer deterministic-to-LLM orchestration
-* tone-aware itinerary refinement
-* adaptive narrative generation
-* reviewer-assisted semantic cleanup
+* budget feasibility engine
+* transport-mode intelligence
+* accommodation-tier enforcement
+* hard budget validation
+* route affordability scoring
+* controlled semantic itinerary polishing
+* reviewer-assisted narrative refinement
+
+This phase improves both:
+- affordability realism
+- itinerary language quality
 
 ---
 

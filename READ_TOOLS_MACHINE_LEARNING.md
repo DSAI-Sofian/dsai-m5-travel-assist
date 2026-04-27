@@ -348,16 +348,17 @@ Refer to **'READ_FUTURE_DEVELOPMENT_GOALS.md'**.
 
 ---
 
-## Sprint 7.x — Controlled LLM Semantic Polishing
+## Sprint 7.x — Budget Feasibility & Semantic Intelligence
 
 Planned enhancements:
 
-* controlled sentence rewriting
-* semantic itinerary polishing
-* reviewer-assisted semantic cleanup
-* adaptive narrative refinement
-* deterministic-to-LLM orchestration safety
-* structured rewrite constraints
+* budget feasibility engine
+* transport-mode intelligence
+* accommodation-tier enforcement
+* hard budget validation
+* route affordability scoring
+* controlled semantic itinerary polishing
+* reviewer-assisted narrative refinement
 
 ---
 

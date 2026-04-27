@@ -168,15 +168,16 @@ This fallback behavior allows limited flexibility beyond explicitly supported de
 
 # 🔮 Expanded AI Usage Roadmap
 
-## Sprint 7.x — Controlled LLM Semantic Polishing
+## Sprint 7.x — Budget Feasibility & Semantic Intelligence
 
 Planned AI-assisted enhancements:
-* controlled sentence rewriting
-* semantic itinerary polishing
-* reviewer-assisted semantic cleanup
-* adaptive narrative refinement
-* deterministic-to-LLM orchestration safety
-* rewrite constraint enforcement
+* budget feasibility engine
+* transport-mode intelligence
+* accommodation-tier enforcement
+* hard budget validation
+* route affordability scoring
+* controlled semantic itinerary polishing
+* reviewer-assisted narrative refinement
 
 The LLM will remain constrained behind:
 * deterministic validation
