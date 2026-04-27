@@ -30,6 +30,11 @@ def _clean_sentence(text: str) -> str:
         "End by enjoying bun cha lunch": "End with a casual local dinner",
         "End by enjoying cao lau lunch": "End with a casual local dinner",
 
+        "End by enjoying Hoi An cooking class": "End with an evening Hoi An cooking experience",
+        "Pause for lunch and take a lunch stop for": "Pause for lunch at",
+        "Keep lunch simple with take a lunch stop for": "Keep lunch simple with",
+        "After arrival, take a lunch stop for": "After arrival, have lunch with",
+
         "old merchant house visit": "old merchant house",
         "local snack stop": "a local snack stop",
         "or a nearby hawker-style dinner": "or a nearby local dinner",
@@ -76,9 +81,11 @@ def enrich_itinerary_item(item: Dict[str, Any]) -> Dict[str, Any]:
 
     enriched["title"] = _enrich_title(enriched.get("title", "Daily travel plan"))
     enriched["morning"] = _clean_sentence(enriched.get("morning", ""))
+    enriched["lunch"] = _clean_sentence(enriched.get("lunch", ""))
     enriched["afternoon"] = _clean_sentence(enriched.get("afternoon", ""))
     enriched["evening"] = _clean_sentence(enriched.get("evening", ""))
     enriched["optional_add_on"] = _clean_sentence(enriched.get("optional_add_on", ""))
+    enriched["travel_note"] = _clean_sentence(enriched.get("travel_note", ""))
 
     return enriched
 

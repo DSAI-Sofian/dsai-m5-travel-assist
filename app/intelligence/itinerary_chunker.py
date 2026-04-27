@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Set
 from app.intelligence.destination_registry import (
     get_destination_profile,
     get_city_theme_items,
@@ -45,6 +45,8 @@ def _activity_phrase(activity: str, slot: str) -> str:
     if activity_type == "food":
         if slot == "morning":
             return f"enjoy {activity}"
+        if slot == "lunch":
+            return f"take a lunch stop for {activity}"
         if slot == "afternoon":
             return f"try {activity}"
         return f"enjoy {activity}"
@@ -110,29 +112,87 @@ def _build_theme_plan(
         else anchor_theme
     )
 
+    lunch_theme = "food" if "food" in available else support_theme
     evening_theme = "food" if "food" in available else support_theme
 
     return {
         "anchor": anchor_theme,
         "support": support_theme,
+        "lunch": lunch_theme,
         "evening": evening_theme,
     }
 
 
-def _choose_activity(
+def _choose_diverse_activity(
     profile: Dict[str, Any],
     city: str,
     theme: str,
     slot: str,
     day: int,
+    used_recent: Set[str],
+    used_global: Set[str],
 ) -> str:
     city_items = get_city_theme_items(profile, city, theme)
 
-    return choose_slot_suitable_activity(
-        activities=city_items,
-        preferred_slot=slot,
-        fallback_day=day,
-    )
+    if not city_items:
+        return "local activity"
+
+    # First preference: suitable for slot and not used recently/globally
+    candidates = [
+        item for item in city_items
+        if item.lower() not in used_recent
+        and item.lower() not in used_global
+    ]
+
+    if candidates:
+        chosen = choose_slot_suitable_activity(
+            activities=candidates,
+            preferred_slot=slot,
+            fallback_day=day,
+        )
+    else:
+        # Second preference: avoid recent repetition even if globally used
+        candidates = [
+            item for item in city_items
+            if item.lower() not in used_recent
+        ]
+
+        if candidates:
+            chosen = choose_slot_suitable_activity(
+                activities=candidates,
+                preferred_slot=slot,
+                fallback_day=day,
+            )
+        else:
+            # Final fallback: allow repetition only when pool is exhausted
+            chosen = choose_slot_suitable_activity(
+                activities=city_items,
+                preferred_slot=slot,
+                fallback_day=day,
+            )
+
+    used_recent.add(chosen.lower())
+    used_global.add(chosen.lower())
+
+    # Keep recent memory bounded
+    if len(used_recent) > 8:
+        used_recent.pop()
+
+    return chosen
+
+
+def _build_travel_note(
+    day: int,
+    city: str,
+    previous_city: str | None,
+) -> str:
+    if previous_city and previous_city != city:
+        return f"Travel transition: move from {previous_city} to {city}; keep this day slightly flexible."
+
+    if day == 1:
+        return "Travel note: keep the first day light for arrival, check-in, and orientation."
+
+    return "Travel note: group nearby stops together to reduce transfer time."
 
 
 def generate_structured_itinerary(
@@ -147,6 +207,9 @@ def generate_structured_itinerary(
     cleaned_preferences = _clean_preferences(preferences)
 
     itinerary = []
+    used_global: Set[str] = set()
+    used_recent: Set[str] = set()
+    previous_city = None
 
     for day_range in chunk_days(duration_days, chunk_size=3):
         for day in day_range:
@@ -161,43 +224,71 @@ def generate_structured_itinerary(
 
             anchor_theme = theme_plan["anchor"]
             support_theme = theme_plan["support"]
+            lunch_theme = theme_plan["lunch"]
             evening_theme = theme_plan["evening"]
 
-            morning_activity = _choose_activity(
+            morning_activity = _choose_diverse_activity(
                 profile=profile,
                 city=city,
                 theme=anchor_theme,
                 slot="morning",
                 day=day,
+                used_recent=used_recent,
+                used_global=used_global,
             )
 
-            afternoon_activity = _choose_activity(
+            lunch_activity = _choose_diverse_activity(
+                profile=profile,
+                city=city,
+                theme=lunch_theme,
+                slot="lunch",
+                day=day + 1,
+                used_recent=used_recent,
+                used_global=used_global,
+            )
+
+            afternoon_activity = _choose_diverse_activity(
                 profile=profile,
                 city=city,
                 theme=support_theme,
                 slot="afternoon",
-                day=day + 1,
+                day=day + 2,
+                used_recent=used_recent,
+                used_global=used_global,
             )
 
-            evening_activity = _choose_activity(
+            evening_activity = _choose_diverse_activity(
                 profile=profile,
                 city=city,
                 theme=evening_theme,
                 slot="evening",
-                day=day + 2,
+                day=day + 3,
+                used_recent=used_recent,
+                used_global=used_global,
             )
 
-            optional_activity = _choose_activity(
+            optional_activity = _choose_diverse_activity(
                 profile=profile,
                 city=city,
                 theme="sightseeing" if "sightseeing" in available_themes else support_theme,
                 slot="afternoon",
-                day=day + 3,
+                day=day + 4,
+                used_recent=used_recent,
+                used_global=used_global,
             )
+
+            travel_note = _build_travel_note(
+                day=day,
+                city=city,
+                previous_city=previous_city,
+            )
+
+            is_transition_day = previous_city and previous_city != city
 
             if day == 1:
                 title = f"Arrival and orientation in {city}"
                 morning = f"Arrive in {city}, check in, and settle near the main travel area."
+                lunch = f"After settling in, {_activity_phrase(lunch_activity, 'lunch')}."
                 afternoon = (
                     f"Take a light orientation walk and "
                     f"{_activity_phrase(afternoon_activity, 'afternoon')}."
@@ -208,6 +299,7 @@ def generate_structured_itinerary(
             elif day == duration_days:
                 title = f"Final day in {city}"
                 morning = f"Enjoy a relaxed final breakfast and short walk around {city}."
+                lunch = f"Keep lunch simple with {_activity_phrase(lunch_activity, 'lunch')}."
                 afternoon = (
                     f"Use the afternoon to {_activity_phrase(afternoon_activity, 'afternoon')} "
                     f"or complete last-minute shopping."
@@ -215,9 +307,18 @@ def generate_structured_itinerary(
                 evening = "Transfer to the airport or prepare for departure."
                 optional = "Optional add-on: keep the schedule light to avoid departure-day stress."
 
+            elif is_transition_day:
+                title = f"Travel transition and light exploration in {city}"
+                morning = f"Transfer from {previous_city} to {city} and check in."
+                lunch = f"After arrival, {_activity_phrase(lunch_activity, 'lunch')}."
+                afternoon = f"Continue with a light visit to {afternoon_activity}."
+                evening = f"End by {_activity_phrase(evening_activity, 'evening')}."
+                optional = f"Optional add-on: include {optional_activity} only if arrival timing allows."
+
             else:
                 title = f"{anchor_theme.title()} and {support_theme.title()} day in {city}"
                 morning = f"Start the day by {_activity_phrase(morning_activity, 'morning')}."
+                lunch = f"Pause for lunch and {_activity_phrase(lunch_activity, 'lunch')}."
                 afternoon = f"Continue by {_activity_phrase(afternoon_activity, 'afternoon')}."
                 evening = f"End by {_activity_phrase(evening_activity, 'evening')}."
                 optional = f"Optional add-on: include {optional_activity} if energy and timing allow."
@@ -230,13 +331,17 @@ def generate_structured_itinerary(
                     "support_theme": support_theme,
                     "title": title,
                     "morning": morning,
+                    "lunch": lunch,
                     "afternoon": afternoon,
                     "evening": evening,
                     "optional_add_on": optional,
+                    "travel_note": travel_note,
                     "pace": "moderate",
                     "notes": profile.get("pace_notes", ""),
                 }
             )
+
+            previous_city = city
 
     return itinerary
 
@@ -250,9 +355,11 @@ def itinerary_to_markdown(itinerary: List[Dict[str, Any]]) -> str:
         lines.append(f"- Main Theme: {item.get('theme', 'sightseeing')}")
         lines.append(f"- Support Theme: {item.get('support_theme', 'balanced')}")
         lines.append(f"- Morning: {item['morning']}")
+        lines.append(f"- Lunch: {item.get('lunch', 'Flexible lunch stop')}")
         lines.append(f"- Afternoon: {item['afternoon']}")
         lines.append(f"- Evening: {item['evening']}")
         lines.append(f"- Optional: {item.get('optional_add_on', 'None')}")
+        lines.append(f"- Travel Note: {item.get('travel_note', 'Group nearby stops together.')}")
         lines.append(f"- Pace: {item['pace']}")
         lines.append(f"- Notes: {item['notes']}")
         lines.append("")

@@ -1,5 +1,4 @@
 from typing import Dict, Any, List
-from app.intelligence.activity_metadata import classify_activity
 
 
 def _clean_text(text: str) -> str:
@@ -16,13 +15,21 @@ def _clean_text(text: str) -> str:
         "visiting local snack stop": "enjoying a local snack stop",
         "visit local snack stop": "enjoy a local snack stop",
         "visiting a local snack stop": "enjoying a local snack stop",
+
         "Start the day by enjoying pho breakfast": "Start the day with pho breakfast",
         "End by enjoying pho breakfast": "End with a light local dinner",
         "End by enjoying kopitiam breakfast": "End with a casual local dinner",
         "End by enjoying mi quang lunch": "End with a casual local dinner",
         "End by enjoying bun cha lunch": "End with a casual local dinner",
         "End by enjoying cao lau lunch": "End with a casual local dinner",
+
         "End by enjoying Hoi An cooking class": "End with an evening Hoi An cooking experience",
+        "Pause for lunch and take a lunch stop for": "Pause for lunch at",
+        "Keep lunch simple with take a lunch stop for": "Keep lunch simple with",
+        "After arrival, take a lunch stop for": "After arrival, have lunch with",
+        "Start the day by visit": "Start the day by visiting",
+        "Continue with a light visit to": "Continue with a light visit to",
+        "old merchant house visit": "old merchant house",
     }
 
     for old, new in replacements.items():
@@ -44,8 +51,13 @@ def _extract_activity_signal(text: str) -> str:
         "start the day by",
         "start the day with",
         "continue by",
+        "continue with a light visit to",
         "end by",
         "end with",
+        "pause for lunch and",
+        "take a lunch stop for",
+        "after arrival,",
+        "have lunch with",
         "enjoying",
         "enjoy",
         "visiting",
@@ -54,8 +66,10 @@ def _extract_activity_signal(text: str) -> str:
         "try",
         "exploring",
         "explore",
-        "take a light orientation walk and",
-        "ease into the trip and",
+        "optional add-on: include",
+        "optional add-on: keep",
+        "if energy and timing allow",
+        "as a flexible nearby stop",
         ".",
     ]
 
@@ -70,6 +84,7 @@ def _detect_repetition(day_item: Dict[str, Any]) -> List[str]:
 
     slots = [
         day_item.get("morning", ""),
+        day_item.get("lunch", ""),
         day_item.get("afternoon", ""),
         day_item.get("evening", ""),
         day_item.get("optional_add_on", ""),
@@ -98,14 +113,14 @@ def _detect_timing_issues(day_item: Dict[str, Any]) -> List[str]:
 
     bad_evening_terms = [
         "breakfast",
-        "lunch",
+        " lunch",
         "museum",
         "mausoleum",
     ]
 
     for term in bad_evening_terms:
         if term in evening:
-            warnings.append(f"Possible timing issue in evening slot: {term}")
+            warnings.append(f"Possible timing issue in evening slot: {term.strip()}")
 
     return warnings
 
@@ -115,11 +130,11 @@ def _detect_density_issues(day_item: Dict[str, Any]) -> List[str]:
 
     filled_slots = 0
 
-    for key in ["morning", "afternoon", "evening", "optional_add_on"]:
+    for key in ["morning", "lunch", "afternoon", "evening", "optional_add_on"]:
         if day_item.get(key):
             filled_slots += 1
 
-    if filled_slots < 3:
+    if filled_slots < 4:
         warnings.append("Light schedule detected")
 
     return warnings
@@ -142,7 +157,7 @@ def validate_itinerary_item(day_item: Dict[str, Any]) -> Dict[str, Any]:
 def repair_itinerary_item(day_item: Dict[str, Any]) -> Dict[str, Any]:
     repaired = dict(day_item)
 
-    for key in ["morning", "afternoon", "evening", "optional_add_on"]:
+    for key in ["morning", "lunch", "afternoon", "evening", "optional_add_on", "travel_note"]:
         repaired[key] = _clean_text(repaired.get(key, ""))
 
     validation = validate_itinerary_item(repaired)
