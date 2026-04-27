@@ -4,6 +4,8 @@ from urllib.parse import quote_plus
 from app.common.openai_client import get_openai_client, MODEL
 from app.pricing.engine import estimate_trip_costs
 from app.intelligence.realism import assess_trip_realism
+from app.intelligence.budget_engine import calculate_budget, generate_budget_variants
+from app.intelligence.itinerary_chunker import generate_structured_itinerary, itinerary_to_markdown
 from app.intelligence.personalization import (
     build_personalization_profile,
     default_personalization_profile,
@@ -321,52 +323,76 @@ Planner output (JSON):
             )
     data["restaurants"] = cleaned_restaurants
 
-    raw_costs = data["cost_breakdown"]
-    required_cost_keys = {"flight", "hotel", "activities", "local_transport", "food"}
-    has_missing_cost_fields = not required_cost_keys.issubset(set(raw_costs.keys()))
+    # -------------------------------------------------------------------
+    # Sprint 6.1 Budget Scaling Engine
+    # -------------------------------------------------------------------
 
-    flight_cost = _to_number(raw_costs.get("flight", 0))
-    hotel_cost = _to_number(raw_costs.get("hotel", 0))
-    activities_cost = _to_number(raw_costs.get("activities", 0))
-    local_transport_cost = _to_number(raw_costs.get("local_transport", 0))
-    food_cost = _to_number(raw_costs.get("food", 0))
+    duration_days = req.get("duration_days", 1)
+    travelers = req.get("travelers", 1)
 
-    total_cost = (
-        flight_cost
-        + hotel_cost
-        + activities_cost
-        + local_transport_cost
-        + food_cost
+    budget_variants = generate_budget_variants(
+        destination=primary_destination,
+        duration_days=duration_days,
+        travelers=travelers,
     )
 
-    used_pricing_fallback = has_missing_cost_fields or total_cost <= 0
+    comfort_budget = budget_variants["comfort"]
 
-    if used_pricing_fallback:
-        estimated = estimate_trip_costs(
-            destination=primary_destination,
-            duration_days=req.get("duration_days", 1),
-            travel_style=profile.get("travel_style"),
-        )
-        flight_cost = _to_number(estimated.get("flight", 0))
-        hotel_cost = _to_number(estimated.get("hotel", 0))
-        activities_cost = _to_number(estimated.get("activities", 0))
-        local_transport_cost = _to_number(estimated.get("local_transport", 0))
-        food_cost = _to_number(estimated.get("food", 0))
-        total_cost = _to_number(estimated.get("total", 0))
-
-    if used_pricing_fallback:
-        data["travel_details"]["flight"]["estimated_price"] = _format_sgd(flight_cost)
-        data["travel_details"]["hotel"]["estimated_price"] = _format_sgd(hotel_cost)
-        data["travel_details"]["transport"]["estimated_cost"] = _format_sgd(local_transport_cost)
-        
     data["cost_breakdown"] = {
-        "flight": _format_sgd(flight_cost),
-        "hotel": _format_sgd(hotel_cost),
-        "activities": _format_sgd(activities_cost),
-        "local_transport": _format_sgd(local_transport_cost),
-        "food": _format_sgd(food_cost),
-        "total": _format_sgd(total_cost),
+        "flight": _format_sgd(
+            comfort_budget["breakdown"]["flights"]
+        ),
+        "hotel": _format_sgd(
+            comfort_budget["breakdown"]["accommodation"]
+        ),
+        "activities": _format_sgd(
+            comfort_budget["breakdown"]["activities"]
+        ),
+        "local_transport": _format_sgd(
+            comfort_budget["breakdown"]["local_transport"]
+        ),
+        "food": _format_sgd(
+            comfort_budget["breakdown"]["food"]
+        ),
+        "buffer": _format_sgd(
+            comfort_budget["breakdown"]["buffer"]
+        ),
+        "total": _format_sgd(
+            comfort_budget["estimated_total"]
+        ),
     }
+
+    # Sync travel_details with structured budget engine
+    data["travel_details"]["flight"]["estimated_price"] = _format_sgd(
+        comfort_budget["breakdown"]["flights"]
+    )
+
+    data["travel_details"]["hotel"]["estimated_price"] = _format_sgd(
+        comfort_budget["breakdown"]["accommodation"]
+    )
+
+    data["travel_details"]["transport"]["estimated_cost"] = _format_sgd(
+        comfort_budget["breakdown"]["local_transport"]
+    )
+
+    # Add variant budgets to output
+    data["budget_variants"] = budget_variants
+
+    # -------------------------------------------------------------------
+    # Sprint 6.1 Long-Itinerary Chunking Engine
+    # -------------------------------------------------------------------
+
+    structured_itinerary = generate_structured_itinerary(
+        destination=primary_destination,
+        duration_days=duration_days,
+        preferences=req.get("preferences", []),
+    )
+
+    data["daily_itinerary"] = structured_itinerary
+
+    data["daily_itinerary_markdown"] = itinerary_to_markdown(
+        structured_itinerary
+    )
 
     realism = assess_trip_realism(
         destination=primary_destination,
