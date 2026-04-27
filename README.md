@@ -70,28 +70,80 @@ Destination Intelligence is only scheduled to be implemented and deployed in Spr
 * Structured JSON contracts
 * Debug-state visibility
 * Lightweight public abuse guard
+* Multi-city itinerary orchestration
+* Geographic destination routing
+* Activity metadata intelligence
+* Structured itinerary chunking
+* Activity diversity engine
+* Self-correcting itinerary validation
+* Automatic itinerary repair and revalidation
+* Travel transition awareness
+* Long-duration itinerary support
+* Structured pacing logic
+* Meal-aware activity timing
 
 ## 🏙️ Multi-City Planning Status
 
-The current implementation may accept multi-city requests through fallback handling, but it is not yet fully optimized for route sequencing or inter-city travel feasibility.
+The current implementation now supports structured multi-city itinerary orchestration for supported Southeast Asian destinations.
 
-For best results, users should submit one primary destination per request.
+Sprint 6.x introduced deterministic geographic routing and destination-scoped activity planning, allowing the planner to generate more realistic multi-city travel flows.
 
-Full multi-destination intelligence is planned for Sprint 8.x, including:
+Current capabilities include:
 
-- route optimization
-- destination sequencing
-- inter-city travel-time checks
-- regional gateway logic
-- improved multi-city cost estimation
+- destination-scoped itinerary generation
+- city-aware activity routing
+- transition-day handling
+- pacing-aware scheduling
+- route sequencing using deterministic progression
+- structured long-duration itinerary support
+- travel transition notes
+- itinerary density balancing
+- activity diversity controls
+- self-correcting itinerary validation
+
+Example supported progression:
+
+```text
+Ho Chi Minh City
+→ Da Nang
+→ Hoi An
+→ Hanoi
+```
 
 ---
 
 # 🧠 Architecture Overview
 
+## Sprint 6.x Intelligence Evolution
+
+Sprint 6.x introduced a major transition from simple itinerary generation into deterministic realism-aware orchestration.
+
+Key improvements introduced during Sprint 6.x include:
+
+- structured itinerary chunking
+- destination-scoped activity routing
+- geographic isolation logic
+- transition-day orchestration
+- narrative enrichment
+- activity metadata intelligence
+- meal-aware activity timing
+- diversity-aware itinerary generation
+- self-correcting itinerary validation
+- automatic itinerary repair and revalidation
+
+The system now performs layered itinerary processing:
+
+```text
+Generate
+→ Enrich
+→ Validate
+→ Repair
+→ Revalidate
+```
+
 ## Current Orchestration Pipeline
 
-```
+```text
 User Request
 → abuse_guard
 → request_parser
@@ -100,6 +152,9 @@ User Request
 → personalization
 → planner
 → executor
+→ itinerary_chunker
+→ activity_metadata
+→ narrative_enricher
 → realism
 → variant
 → ranking
@@ -107,28 +162,37 @@ User Request
 → continuity
 → session_memory
 → reviewer
+→ itinerary_validator
+→ auto_repair
+→ revalidation
 ```
 
 ---
 
 # ⚙️ Multi-Agent Responsibilities
 
-| Agent                | Responsibility                                                       | Guardrails                      |
-| -------------------- | -------------------------------------------------------------------- | ------------------------------- |
-| Abuse Guard          | Pre-Orchestration defensive gateway that validates incoming requests | Context filtering               |
-| Request Parser       | Extracts destination, duration, budget, preferences                  | Parser hygiene filtering        |
-| Routing Agent        | Determines active orchestration path                                 | Conditional execution           |
-| Place Resolver       | Maps destinations and gateways                                       | Prevents destination drift      |
-| Personalization      | Infers travel style and preferences                                  | Controlled preference injection |
-| Planner              | Generates structured planning assumptions                            | Scope control                   |
-| Executor             | Produces itinerary and travel details                                | Structured JSON outputs         |
-| Realism              | Evaluates pacing and feasibility                                     | Avoids unrealistic itineraries  |
-| Variant Engine       | Creates multiple plan variants                                       | Deterministic transformations   |
-| Ranking Engine       | Scores and selects best variant                                      | Weighted explainable scoring    |
-| Feedback Interpreter | Applies user follow-up intent                                        | Controlled mutation             |
-| Continuity Layer     | Maintains conversational coherence                                   | Context isolation               |
-| Session Memory       | Reuses lightweight preferences                                       | Memory leakage filtering        |
-| Reviewer             | Final validation and tone refinement                                 | Budget and consistency checks   |
+| Agent / Layer        | Responsibility                                                     | Guardrails / Controls           |
+| -------------------- | ------------------------------------------------------------------ | ------------------------------- |
+| Abuse Guard          | Pre-orchestration defensive gateway                                | Context filtering               |
+| Request Parser       | Extracts destination, duration, budget, preferences                | Parser hygiene filtering        |
+| Routing Agent        | Determines active orchestration path                               | Conditional execution           |
+| Place Resolver       | Maps destinations and regional routing                             | Prevents destination drift      |
+| Personalization      | Infers travel style and preferences                                | Controlled preference injection |
+| Planner              | Generates structured planning assumptions                          | Scope control                   |
+| Executor             | Produces itinerary and travel details                              | Structured JSON outputs         |
+| Itinerary Chunker    | Builds structured multi-day itinerary blocks                       | Duration-aware pacing           |
+| Activity Metadata    | Applies meal-aware and activity-aware semantic rules               | Timing validation               |
+| Narrative Enricher   | Improves itinerary readability and sentence flow                   | Controlled semantic cleanup     |
+| Realism Layer        | Evaluates pacing and feasibility                                   | Avoids unrealistic itineraries  |
+| Variant Engine       | Creates multiple plan variants                                     | Deterministic transformations   |
+| Ranking Engine       | Scores and selects best variant                                    | Weighted explainable scoring    |
+| Feedback Interpreter | Applies user follow-up intent                                      | Controlled mutation             |
+| Continuity Layer     | Maintains conversational coherence                                 | Context isolation               |
+| Session Memory       | Reuses lightweight preferences                                     | Memory leakage filtering        |
+| Reviewer             | Final validation and itinerary assessment                          | Quality and realism checks      |
+| Itinerary Validator  | Detects repetition, timing conflicts, and weak itinerary structure | Validation scoring              |
+| Auto-Repair Layer    | Repairs repeated or weak itinerary sections before final output    | Controlled deterministic repair |
+| Revalidation Layer   | Confirms repaired itinerary quality                                | Final consistency enforcement   |
 
 ---
 
@@ -245,10 +309,15 @@ app
 │   ├── openai_client.py
 │   └── request_parser.py
 ├── intelligence
+│   ├── activity_metadata.py
 │   ├── conversation_interpreter.py
 │   ├── destination_mapper.py
+│   ├── destination_registry.py
 │   ├── feedback_interpreter.py
 │   ├── feedback_selector.py
+│   ├── itinerary_chunker.py
+│   ├── itinerary_validator.py
+│   ├── narrative_enricher.py
 │   ├── personalization.py
 │   ├── place_resolver.py
 │   ├── realism.py
@@ -332,7 +401,13 @@ Enables full orchestration trace visibility for debugging and explainability.
 
 Generated itineraries may include:
 
-* day-by-day activities
+* structured day-by-day itineraries
+* morning / lunch / afternoon / evening activity planning
+* multi-city route sequencing
+* transition-day handling
+* optional itinerary add-ons
+* travel pacing notes
+* meal-aware activity timing
 * estimated flight pricing
 * hotel recommendations
 * transport suggestions
@@ -341,6 +416,8 @@ Generated itineraries may include:
 * cost breakdowns
 * realism pacing
 * variant comparisons
+* validation-aware itinerary repair
+* automatic repetition reduction
 
 ---
 
@@ -373,15 +450,20 @@ The system currently does NOT support:
 
 ## QA Coverage Includes
 
-| Test Category          | Purpose                           |
-| ---------------------- | --------------------------------- |
-| Parsing Validation     | Detect malformed requests         |
-| Ranking Consistency    | Ensure score alignment            |
-| Variant Validation     | Verify deterministic outputs      |
-| Telegram Formatting    | Prevent message corruption        |
-| Realism Checks         | Avoid impossible itineraries      |
-| Continuity Tests       | Validate follow-up coherence      |
-| Debug Trace Validation | Confirm explainability visibility |
+| Test Category             | Purpose                                   |
+| ------------------------- | ----------------------------------------- |
+| Parsing Validation        | Detect malformed requests                 |
+| Ranking Consistency       | Ensure score alignment                    |
+| Variant Validation        | Verify deterministic outputs              |
+| Telegram Formatting       | Prevent message corruption                |
+| Realism Checks            | Avoid impossible itineraries              |
+| Geographic Routing Checks | Prevent cross-city activity leakage       |
+| Meal Timing Validation    | Prevent breakfast/dinner timing conflicts |
+| Diversity Validation      | Reduce repeated itinerary activities      |
+| Auto-Repair Validation    | Confirm itinerary correction behavior     |
+| Revalidation Checks       | Verify repaired itinerary quality         |
+| Continuity Tests          | Validate follow-up coherence              |
+| Debug Trace Validation    | Confirm explainability visibility         |
 
 ---
 
@@ -424,44 +506,86 @@ The bot supports conversational continuity.
 * no hotel APIs
 * no persistent database
 * no authentication layer
-* no multi-city optimization
-* regex-based NLP parsing
+* deterministic destination intelligence is manually curated
+* regex-assisted NLP parsing still used in some routing paths
 * no observability dashboard
+* no live transit-time estimation
+* no external weather integration
+* semantic phrasing still partially rule-based
+* itinerary realism strongest for supported Southeast Asian destinations
 
 ---
 
 # 🧭 Sprint Progression Summary
 
-| Sprint      | Major Capability                     |
-| ----------- | ------------------------------------ |
-| Sprint 1.1  | Orchestrator Refactor                |
-| Sprint 1.2  | Agent Registry                       |
-| Sprint 1.3  | Agent Decomposition                  |
-| Sprint 1.4  | Guardrails                           |
-| Sprint 2.1  | Destination Intelligence             |
-| Sprint 2.2  | Pricing Engine                       |
-| Sprint 2.3  | Realism Layer                        |
-| Sprint 2.4  | Personalization                      |
-| Sprint 3.1  | Agent Expansion                      |
-| Sprint 3.2  | Memory Layer                         |
-| Sprint 3.3  | Machine Learning Component           |
-| Sprint 3.4  | Telegram Output formatting           |
-| Sprint 3.5  | Deterministic ranking engine         |
-| Sprint 3.6  | Variant generation                   |
-| Sprint 3.7  | Explainability layer                 |
-| Sprint 3.8  | Adaptive feedback loop               |
-| Sprint 3.9  | Conversational continuity            |
-| Sprint 3.10 | Session memory                       |
-| Sprint 3.11 | Parser hygiene and leakage filtering |
-| Sprint 4.1  | Demo-ready API structure             |
-| Sprint 4.2  | Schema validation and debug gating   |
-| Sprint 4.3  | Submission-grade documentation       |
+| Sprint      | Major Capability                            |
+| ----------- | ------------------------------------------- |
+| Sprint 1.1  | Orchestrator Refactor                       |
+| Sprint 1.2  | Agent Registry                              |
+| Sprint 1.3  | Agent Decomposition                         |
+| Sprint 1.4  | Guardrails                                  |
+| Sprint 2.1  | Destination Intelligence                    |
+| Sprint 2.2  | Pricing Engine                              |
+| Sprint 2.3  | Realism Layer                               |
+| Sprint 2.4  | Personalization                             |
+| Sprint 3.1  | Agent Expansion                             |
+| Sprint 3.2  | Memory Layer                                |
+| Sprint 3.3  | Machine Learning Component                  |
+| Sprint 3.4  | Telegram Output Formatting                  |
+| Sprint 3.5  | Deterministic Ranking Engine                |
+| Sprint 3.6  | Variant Generation                          |
+| Sprint 3.7  | Explainability Layer                        |
+| Sprint 3.8  | Adaptive Feedback Loop                      |
+| Sprint 3.9  | Conversational Continuity                   |
+| Sprint 3.10 | Session Memory                              |
+| Sprint 3.11 | Parser Hygiene and Leakage Filtering        |
+| Sprint 4.1  | Demo-Ready API Structure                    |
+| Sprint 4.2  | Schema Validation and Debug Gating          |
+| Sprint 4.3  | Submission-Grade Documentation              |
+| Sprint 5.1  | Lightweight Abuse Protection                |
+| Sprint 5.2  | Deterministic Destination Routing           |
+| Sprint 5.3  | Realism-Aware Variant Improvements          |
+| Sprint 6.1  | Structured Itinerary Chunking               |
+| Sprint 6.2  | Geographic Activity Isolation               |
+| Sprint 6.3  | Multi-City Routing and Transition Logic     |
+| Sprint 6.4  | Narrative Enrichment and Realism Refinement |
+| Sprint 6.5  | Activity Metadata and Timing Validation     |
+| Sprint 6.6  | Itinerary Validation and Self-Correction    |
+| Sprint 6.7  | Activity Diversity and Density Engine       |
+| Sprint 6.8  | Structured Meal Metadata Engine             |
+| Sprint 6.9  | Automatic Itinerary Repair and Revalidation |
 
 ---
 
 # 🔮 Future Roadmap
 
-## Sprint 5.x — Real API Integration
+## Sprint 7.x — Controlled LLM Semantic Polishing
+
+Planned enhancements:
+
+* controlled sentence rewriting
+* semantic itinerary polishing
+* safer deterministic-to-LLM orchestration
+* tone-aware itinerary refinement
+* adaptive narrative generation
+* reviewer-assisted semantic cleanup
+
+---
+
+## Sprint 8.x — Advanced Destination Intelligence
+
+Future intelligence goals:
+
+* route optimization
+* sequencing logic
+* travel-time realism
+* regional gateway logic
+* live transit integration
+* destination knowledge scaling
+
+---
+
+## Sprint 9.x — Real API Integration
 
 Planned additions:
 
@@ -469,40 +593,33 @@ Planned additions:
 * hotel APIs
 * normalized external outputs
 * API fallback logic
+* live availability awareness
 
 ---
 
-## Sprint 6.x — Persistent Personalization Memory
+## Sprint 10.x — Persistent Personalization Memory
 
 Planned capabilities:
 
 * long-term preference memory
 * adaptive scoring weights
 * cross-session continuity
+* preference evolution tracking
 
 ---
 
-## Sprint 7.x — Booking Readiness
+## Sprint 11.x — Booking Readiness
 
 Planned enhancements:
 
 * prefilled booking flows
 * affiliate integration readiness
 * deep-link booking support
+* travel checkout preparation
 
 ---
 
-## Sprint 8.x — Multi-Destination Intelligence
-
-Future intelligence goals:
-
-* route optimization
-* sequencing logic
-* travel-time realism
-
----
-
-## Sprint 9.x — Agent Scaling
+## Sprint 12.x — Agent Scaling
 
 Target:
 
@@ -510,17 +627,9 @@ Target:
 8–15 specialized orchestration agents
 ```
 
-Potential future agents:
-
-* weather agent
-* safety advisor
-* visa intelligence
-* budget optimizer
-* recommendation explainer
-
 ---
 
-## Sprint 10.x — Conversational Expansion
+## Sprint 13.x — Conversational Expansion
 
 Target:
 
@@ -534,6 +643,8 @@ Potential interactivity:
 * richer conversational follow-ups
 * compact itinerary rendering
 * adaptive interaction styles
+* itinerary negotiation flows
+* interactive refinement sessions
 
 ---
 
@@ -578,6 +689,25 @@ Potential future upgrades:
 * compact itinerary mode
 * expandable sections
 * multi-message rendering
+
+---
+
+# 🏗️ Current Architecture Maturity
+
+The current platform has evolved beyond a simple chatbot-style itinerary generator.
+
+The system now includes:
+
+- deterministic orchestration pipelines
+- validation-aware itinerary generation
+- automatic repair and revalidation loops
+- explainability-first ranking systems
+- structured pacing and realism scoring
+- lightweight conversational continuity
+- destination-scoped activity intelligence
+- modular orchestration extensibility
+
+The architecture now behaves closer to a lightweight orchestration platform than a traditional single-pass LLM chatbot.
 
 ---
 
