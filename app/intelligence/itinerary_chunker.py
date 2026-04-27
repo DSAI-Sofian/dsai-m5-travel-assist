@@ -3,62 +3,10 @@ from app.intelligence.destination_registry import (
     get_destination_profile,
     get_city_theme_items,
 )
-
-
-FOOD_KEYWORDS = [
-    "pho",
-    "banh",
-    "coffee",
-    "food",
-    "market",
-    "class",
-    "laksa",
-    "char",
-    "nasi",
-    "hawker",
-    "kopitiam",
-    "warung",
-    "satay",
-    "breakfast",
-    "lunch",
-    "dinner",
-    "seafood",
-    "café",
-    "cafe",
-    "dumplings",
-]
-
-CULTURE_KEYWORDS = [
-    "museum",
-    "temple",
-    "palace",
-    "mansion",
-    "heritage",
-    "mausoleum",
-    "kongsi",
-    "ancient",
-    "pagoda",
-    "cathedral",
-    "monument",
-    "mosque",
-    "bridge",
-]
-
-NATURE_KEYWORDS = [
-    "hill",
-    "lake",
-    "beach",
-    "garden",
-    "canal",
-    "mountain",
-    "waterfall",
-    "fields",
-    "coastal",
-    "river",
-    "terrace",
-    "trail",
-    "waterfront",
-]
+from app.intelligence.activity_metadata import (
+    classify_activity,
+    choose_slot_suitable_activity,
+)
 
 
 def chunk_days(duration_days: int, chunk_size: int = 3) -> List[range]:
@@ -91,47 +39,25 @@ def _clean_preferences(preferences: List[str] | None) -> List[str]:
     return cleaned or ["sightseeing"]
 
 
-def _classify_activity(activity: str) -> str:
-    text = activity.lower()
-
-    if any(keyword in text for keyword in FOOD_KEYWORDS):
-        return "food"
-
-    if any(keyword in text for keyword in CULTURE_KEYWORDS):
-        return "culture"
-
-    if any(keyword in text for keyword in NATURE_KEYWORDS):
-        return "nature"
-
-    return "sightseeing"
-
-
 def _activity_phrase(activity: str, slot: str) -> str:
-    activity_type = _classify_activity(activity)
+    activity_type = classify_activity(activity)
 
     if activity_type == "food":
         if slot == "morning":
             return f"enjoy {activity}"
         if slot == "afternoon":
-            return f"try {activity} as part of the local food trail"
-        return f"enjoy {activity} or a nearby local dinner"
+            return f"try {activity}"
+        return f"enjoy {activity}"
 
     if activity_type == "culture":
         if slot == "evening":
-            return f"take a light walk around the {activity} area"
+            return f"walk around the {activity} area"
         return f"visit {activity}"
 
     if activity_type == "nature":
         return f"explore {activity}"
 
     return f"visit {activity}"
-
-
-def _pick_item(items: List[str], day: int) -> str:
-    if not items:
-        return "local activity"
-
-    return items[(day - 1) % len(items)]
 
 
 def _pick_city(route: List[str], day: int, duration_days: int) -> str:
@@ -197,14 +123,16 @@ def _choose_activity(
     profile: Dict[str, Any],
     city: str,
     theme: str,
+    slot: str,
     day: int,
 ) -> str:
     city_items = get_city_theme_items(profile, city, theme)
 
-    if city_items:
-        return _pick_item(city_items, day)
-
-    return "local activity"
+    return choose_slot_suitable_activity(
+        activities=city_items,
+        preferred_slot=slot,
+        fallback_day=day,
+    )
 
 
 def generate_structured_itinerary(
@@ -235,33 +163,64 @@ def generate_structured_itinerary(
             support_theme = theme_plan["support"]
             evening_theme = theme_plan["evening"]
 
-            anchor_activity = _choose_activity(profile, city, anchor_theme, day)
-            support_activity = _choose_activity(profile, city, support_theme, day + 1)
-            evening_activity = _choose_activity(profile, city, evening_theme, day + 2)
+            morning_activity = _choose_activity(
+                profile=profile,
+                city=city,
+                theme=anchor_theme,
+                slot="morning",
+                day=day,
+            )
+
+            afternoon_activity = _choose_activity(
+                profile=profile,
+                city=city,
+                theme=support_theme,
+                slot="afternoon",
+                day=day + 1,
+            )
+
+            evening_activity = _choose_activity(
+                profile=profile,
+                city=city,
+                theme=evening_theme,
+                slot="evening",
+                day=day + 2,
+            )
+
+            optional_activity = _choose_activity(
+                profile=profile,
+                city=city,
+                theme="sightseeing" if "sightseeing" in available_themes else support_theme,
+                slot="afternoon",
+                day=day + 3,
+            )
 
             if day == 1:
                 title = f"Arrival and orientation in {city}"
                 morning = f"Arrive in {city}, check in, and settle near the main travel area."
                 afternoon = (
                     f"Take a light orientation walk and "
-                    f"{_activity_phrase(anchor_activity, 'afternoon')}."
+                    f"{_activity_phrase(afternoon_activity, 'afternoon')}."
                 )
                 evening = f"Ease into the trip and {_activity_phrase(evening_activity, 'evening')}."
+                optional = f"Optional add-on: keep {optional_activity} as a flexible nearby stop."
 
             elif day == duration_days:
                 title = f"Final day in {city}"
                 morning = f"Enjoy a relaxed final breakfast and short walk around {city}."
                 afternoon = (
-                    f"Use the afternoon to {_activity_phrase(anchor_activity, 'afternoon')} "
+                    f"Use the afternoon to {_activity_phrase(afternoon_activity, 'afternoon')} "
                     f"or complete last-minute shopping."
                 )
                 evening = "Transfer to the airport or prepare for departure."
+                optional = "Optional add-on: keep the schedule light to avoid departure-day stress."
 
             else:
                 title = f"{anchor_theme.title()} and {support_theme.title()} day in {city}"
-                morning = f"Start the day with {_activity_phrase(anchor_activity, 'morning')}."
-                afternoon = f"Continue with {_activity_phrase(support_activity, 'afternoon')}."
-                evening = f"End with {_activity_phrase(evening_activity, 'evening')}."
+                morning = f"Start the day by {_activity_phrase(morning_activity, 'morning')}."
+                afternoon = f"Continue by {_activity_phrase(afternoon_activity, 'afternoon')}."
+                evening = f"End by {_activity_phrase(evening_activity, 'evening')}."
+                optional = f"Optional add-on: include {optional_activity} if energy and timing allow."
 
             itinerary.append(
                 {
@@ -273,6 +232,7 @@ def generate_structured_itinerary(
                     "morning": morning,
                     "afternoon": afternoon,
                     "evening": evening,
+                    "optional_add_on": optional,
                     "pace": "moderate",
                     "notes": profile.get("pace_notes", ""),
                 }
@@ -292,6 +252,7 @@ def itinerary_to_markdown(itinerary: List[Dict[str, Any]]) -> str:
         lines.append(f"- Morning: {item['morning']}")
         lines.append(f"- Afternoon: {item['afternoon']}")
         lines.append(f"- Evening: {item['evening']}")
+        lines.append(f"- Optional: {item.get('optional_add_on', 'None')}")
         lines.append(f"- Pace: {item['pace']}")
         lines.append(f"- Notes: {item['notes']}")
         lines.append("")

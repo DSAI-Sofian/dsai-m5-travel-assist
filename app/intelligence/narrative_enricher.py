@@ -8,25 +8,30 @@ def _clean_sentence(text: str) -> str:
     cleaned = str(text).strip()
 
     replacements = {
-        "Continue with visit ": "Continue by visiting ",
-        "Continue with explore ": "Continue by exploring ",
-        "Continue with try ": "Continue by trying ",
-        "Continue with enjoy ": "Continue by enjoying ",
-        "Continue with take ": "Continue by taking ",
-        "End with end with ": "End with ",
-        "End with enjoy ": "End by enjoying ",
-        "End with take ": "End by taking ",
-        "Start the day with enjoy ": "Start the day by enjoying ",
-        "Start the day with visit ": "Start the day by visiting ",
-        "Start the day with explore ": "Start the day by exploring ",
-        "Start the day with try ": "Start the day by trying ",
-        "Start the day and start with ": "Start the day with ",
-        "Start the day and visit ": "Start the day by visiting ",
-        "Start the day and explore ": "Start the day by exploring ",
-        "Start the day and try ": "Start the day by trying ",
-        "Use the afternoon to try ": "Use the afternoon to enjoy ",
-        "Use the afternoon to visit ": "Use the afternoon to visit ",
-        "Use the afternoon to enjoy enjoy ": "Use the afternoon to enjoy ",
+        "Start the day by enjoy ": "Start the day by enjoying ",
+        "Start the day by visit ": "Start the day by visiting ",
+        "Start the day by explore ": "Start the day by exploring ",
+        "Start the day by try ": "Start the day by trying ",
+
+        "Continue by enjoy ": "Continue by enjoying ",
+        "Continue by visit ": "Continue by visiting ",
+        "Continue by explore ": "Continue by exploring ",
+        "Continue by try ": "Continue by trying ",
+
+        "End by enjoy ": "End by enjoying ",
+        "End by visit ": "End by visiting ",
+        "End by explore ": "End by exploring ",
+        "End by try ": "End by trying ",
+
+        "Start the day by enjoying pho breakfast": "Start the day with pho breakfast",
+        "End by enjoying pho breakfast": "End with a light local dinner",
+        "End by enjoying kopitiam breakfast": "End with a casual local dinner",
+        "End by enjoying mi quang lunch": "End with a casual local dinner",
+        "End by enjoying bun cha lunch": "End with a casual local dinner",
+        "End by enjoying cao lau lunch": "End with a casual local dinner",
+
+        "old merchant house visit": "old merchant house",
+        "local snack stop": "a local snack stop",
         "or a nearby hawker-style dinner": "or a nearby local dinner",
     }
 
@@ -73,6 +78,7 @@ def enrich_itinerary_item(item: Dict[str, Any]) -> Dict[str, Any]:
     enriched["morning"] = _clean_sentence(enriched.get("morning", ""))
     enriched["afternoon"] = _clean_sentence(enriched.get("afternoon", ""))
     enriched["evening"] = _clean_sentence(enriched.get("evening", ""))
+    enriched["optional_add_on"] = _clean_sentence(enriched.get("optional_add_on", ""))
 
     return enriched
 
