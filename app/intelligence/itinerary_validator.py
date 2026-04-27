@@ -8,36 +8,34 @@ def _clean_text(text: str) -> str:
     cleaned = str(text).strip()
 
     replacements = {
-        
         "visitinging": "visiting",
-        
-        "visiting casual café break": "enjoying a casual café break",
-        "visiting casual cafe break": "enjoying a casual cafe break",
-        "visit casual café break": "enjoy a casual café break",
-        "visit casual cafe break": "enjoy a casual cafe break",
-        "visiting local snack stop": "enjoying a local snack stop",
-        "visit local snack stop": "enjoy a local snack stop",
-        "visiting a local snack stop": "enjoying a local snack stop",
-
+        "Start the day by visitinging": "Start the day by visiting",
         "Start the day by enjoying pho breakfast": "Start the day with pho breakfast",
-        "End by enjoying pho breakfast": "End with a light local dinner",
-        "End by enjoying kopitiam breakfast": "End with a casual local dinner",
-        "End by enjoying mi quang lunch": "End with a casual local dinner",
-        "End by enjoying bun cha lunch": "End with a casual local dinner",
-        "End by enjoying cao lau lunch": "End with a casual local dinner",
 
         "End by enjoying Hoi An cooking class": "End with an evening Hoi An cooking experience",
-        "Pause for lunch and take a lunch stop for": "Pause for lunch at",
-        "Keep lunch simple with take a lunch stop for": "Keep lunch simple with",
-        "After arrival, take a lunch stop for": "After arrival, have lunch with",
-        "Start the day by visit": "Start the day by visiting",
-        "Continue with a light visit to": "Continue with a light visit to",
+
+        "Pause for lunch with pho breakfast": "Pause for lunch with bun cha lunch",
+        "Pause for lunch with pho dinner": "Pause for lunch with banh mi tasting",
+        "Pause for lunch with seafood dinner": "Pause for lunch with mi quang lunch",
+        "Pause for lunch with coffee stop": "Pause for lunch with a local food stop",
+
+        "After settling in, have pho dinner": "After settling in, have banh mi tasting",
+        "After arrival, have seafood dinner": "After arrival, have mi quang lunch",
+        "After arrival, have egg coffee stop": "After arrival, have bun cha lunch",
+        "After arrival, have cao lau lunch": "After arrival, have cao lau lunch",
+
+        "Keep lunch simple with pho breakfast": "Keep lunch simple with bun cha lunch",
+        "Keep lunch simple with seafood dinner": "Keep lunch simple with mi quang lunch",
+
+        "Continue with a light visit to bun cha lunch": "Continue with a light local food stop for bun cha",
+        "Keep lunch simple with explore beachside café stop": "Keep lunch simple with a beachside café stop",
+
         "old merchant house visit": "old merchant house",
     }
 
     for old, new in replacements.items():
         cleaned = cleaned.replace(old, new)
-    
+
     cleaned = cleaned.replace("visitinging", "visiting")
 
     while "  " in cleaned:
@@ -57,12 +55,13 @@ def _extract_activity_signal(text: str) -> str:
         "start the day with",
         "continue by",
         "continue with a light visit to",
+        "continue with a light local food stop for",
         "end by",
         "end with",
-        "pause for lunch and",
-        "take a lunch stop for",
-        "after arrival,",
-        "have lunch with",
+        "pause for lunch with",
+        "after settling in, have",
+        "after arrival, have",
+        "keep lunch simple with",
         "enjoying",
         "enjoy",
         "visiting",
@@ -73,6 +72,7 @@ def _extract_activity_signal(text: str) -> str:
         "explore",
         "optional add-on: include",
         "optional add-on: keep",
+        "only if arrival timing allows",
         "if energy and timing allow",
         "as a flexible nearby stop",
         ".",
@@ -114,7 +114,13 @@ def _detect_repetition(day_item: Dict[str, Any]) -> List[str]:
 def _detect_timing_issues(day_item: Dict[str, Any]) -> List[str]:
     warnings = []
 
+    lunch = str(day_item.get("lunch", "")).lower()
     evening = str(day_item.get("evening", "")).lower()
+
+    bad_lunch_terms = [
+        "breakfast",
+        "dinner",
+    ]
 
     bad_evening_terms = [
         "breakfast",
@@ -122,6 +128,10 @@ def _detect_timing_issues(day_item: Dict[str, Any]) -> List[str]:
         "museum",
         "mausoleum",
     ]
+
+    for term in bad_lunch_terms:
+        if term in lunch:
+            warnings.append(f"Possible timing issue in lunch slot: {term.strip()}")
 
     for term in bad_evening_terms:
         if term in evening:
