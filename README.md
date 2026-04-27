@@ -498,10 +498,11 @@ The bot supports conversational continuity.
 
 ---
 
-# ⚠️ Current Limitations
+# ⚠️ Current Limitations (to be addressed in future sprints)
 
 ## Known Constraints
 
+* no land transportation option for ultra-low budget travel planning
 * no real-time flight pricing
 * no hotel APIs
 * no persistent database
