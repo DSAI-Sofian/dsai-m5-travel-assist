@@ -8,6 +8,9 @@ def _clean_text(text: str) -> str:
     cleaned = str(text).strip()
 
     replacements = {
+        
+        "visitinging": "visiting",
+        
         "visiting casual café break": "enjoying a casual café break",
         "visiting casual cafe break": "enjoying a casual cafe break",
         "visit casual café break": "enjoy a casual café break",
