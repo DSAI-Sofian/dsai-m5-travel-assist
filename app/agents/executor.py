@@ -7,6 +7,7 @@ from app.intelligence.realism import assess_trip_realism
 from app.intelligence.budget_engine import calculate_budget, generate_budget_variants
 from app.intelligence.itinerary_chunker import generate_structured_itinerary, itinerary_to_markdown
 from app.intelligence.narrative_enricher import enrich_itinerary
+from app.intelligence.itinerary_validator import repair_and_validate_itinerary
 from app.intelligence.personalization import (
     build_personalization_profile,
     default_personalization_profile,
@@ -387,14 +388,18 @@ Planner output (JSON):
     destination=primary_destination,
     duration_days=duration_days,
     preferences=req.get("preferences", []),
-)
+    )
 
     enriched_itinerary = enrich_itinerary(structured_itinerary)
 
-    data["daily_itinerary"] = enriched_itinerary
+    validated_result = repair_and_validate_itinerary(enriched_itinerary)
+    final_itinerary = validated_result["itinerary"]
+
+    data["daily_itinerary"] = final_itinerary
+    data["itinerary_validation"] = validated_result["validation_summary"]
 
     data["daily_itinerary_markdown"] = itinerary_to_markdown(
-    enriched_itinerary
+        final_itinerary
     )
 
     realism = assess_trip_realism(
