@@ -1,5 +1,8 @@
 from typing import List, Dict, Any
-from app.intelligence.destination_registry import get_destination_profile
+from app.intelligence.destination_registry import (
+    get_destination_profile,
+    get_city_theme_items,
+)
 
 
 FOOD_KEYWORDS = [
@@ -19,6 +22,10 @@ FOOD_KEYWORDS = [
     "breakfast",
     "lunch",
     "dinner",
+    "seafood",
+    "café",
+    "cafe",
+    "dumplings",
 ]
 
 CULTURE_KEYWORDS = [
@@ -30,6 +37,11 @@ CULTURE_KEYWORDS = [
     "mausoleum",
     "kongsi",
     "ancient",
+    "pagoda",
+    "cathedral",
+    "monument",
+    "mosque",
+    "bridge",
 ]
 
 NATURE_KEYWORDS = [
@@ -42,6 +54,10 @@ NATURE_KEYWORDS = [
     "waterfall",
     "fields",
     "coastal",
+    "river",
+    "terrace",
+    "trail",
+    "waterfront",
 ]
 
 
@@ -95,12 +111,14 @@ def _activity_phrase(activity: str, slot: str) -> str:
 
     if activity_type == "food":
         if slot == "morning":
-            return f"start with {activity}"
+            return f"enjoy {activity}"
         if slot == "afternoon":
             return f"try {activity} as part of the local food trail"
-        return f"end with {activity} or a nearby hawker-style dinner"
+        return f"enjoy {activity} or a nearby local dinner"
 
     if activity_type == "culture":
+        if slot == "evening":
+            return f"take a light walk around the {activity} area"
         return f"visit {activity}"
 
     if activity_type == "nature":
@@ -129,26 +147,29 @@ def _pick_city(route: List[str], day: int, duration_days: int) -> str:
     return route[index]
 
 
+def _available_themes_for_city(profile: Dict[str, Any], city: str) -> List[str]:
+    cities = profile.get("cities", {})
+    city_profile = cities.get(city, {})
+
+    return [
+        theme
+        for theme, items in city_profile.items()
+        if isinstance(items, list) and len(items) > 0
+    ]
+
+
 def _build_theme_plan(
     day: int,
     preferences: List[str],
-    available_themes: Dict[str, List[str]],
+    available_themes: List[str],
 ) -> Dict[str, str]:
-    """
-    Builds a blended day plan.
-
-    Example:
-    - Food preference still anchors the trip.
-    - But each day gets culture/sightseeing/nature support to avoid repetition.
-    """
-
     fallback_cycle = ["culture", "food", "sightseeing", "nature"]
     available = [theme for theme in fallback_cycle if theme in available_themes]
 
     if not available:
-        available = list(available_themes.keys()) or ["sightseeing"]
+        available = available_themes or ["sightseeing"]
 
-    preferred = [p for p in preferences if p in available_themes]
+    preferred = [p for p in preferences if p in available]
 
     anchor_theme = preferred[0] if preferred else available[(day - 1) % len(available)]
 
@@ -163,13 +184,27 @@ def _build_theme_plan(
         else anchor_theme
     )
 
-    evening_theme = "food" if "food" in available_themes else support_theme
+    evening_theme = "food" if "food" in available else support_theme
 
     return {
         "anchor": anchor_theme,
         "support": support_theme,
         "evening": evening_theme,
     }
+
+
+def _choose_activity(
+    profile: Dict[str, Any],
+    city: str,
+    theme: str,
+    day: int,
+) -> str:
+    city_items = get_city_theme_items(profile, city, theme)
+
+    if city_items:
+        return _pick_item(city_items, day)
+
+    return "local activity"
 
 
 def generate_structured_itinerary(
@@ -181,7 +216,6 @@ def generate_structured_itinerary(
     profile = get_destination_profile(destination)
 
     route = profile.get("route", [destination])
-    themes = profile.get("themes", {})
     cleaned_preferences = _clean_preferences(preferences)
 
     itinerary = []
@@ -189,15 +223,21 @@ def generate_structured_itinerary(
     for day_range in chunk_days(duration_days, chunk_size=3):
         for day in day_range:
             city = _pick_city(route, day, duration_days)
-            theme_plan = _build_theme_plan(day, cleaned_preferences, themes)
+            available_themes = _available_themes_for_city(profile, city)
+
+            theme_plan = _build_theme_plan(
+                day=day,
+                preferences=cleaned_preferences,
+                available_themes=available_themes,
+            )
 
             anchor_theme = theme_plan["anchor"]
             support_theme = theme_plan["support"]
             evening_theme = theme_plan["evening"]
 
-            anchor_activity = _pick_item(themes.get(anchor_theme, []), day)
-            support_activity = _pick_item(themes.get(support_theme, []), day + 1)
-            evening_activity = _pick_item(themes.get(evening_theme, []), day + 2)
+            anchor_activity = _choose_activity(profile, city, anchor_theme, day)
+            support_activity = _choose_activity(profile, city, support_theme, day + 1)
+            evening_activity = _choose_activity(profile, city, evening_theme, day + 2)
 
             if day == 1:
                 title = f"Arrival and orientation in {city}"
@@ -219,7 +259,7 @@ def generate_structured_itinerary(
 
             else:
                 title = f"{anchor_theme.title()} and {support_theme.title()} day in {city}"
-                morning = f"Start the day and {_activity_phrase(anchor_activity, 'morning')}."
+                morning = f"Start the day with {_activity_phrase(anchor_activity, 'morning')}."
                 afternoon = f"Continue with {_activity_phrase(support_activity, 'afternoon')}."
                 evening = f"End with {_activity_phrase(evening_activity, 'evening')}."
 
