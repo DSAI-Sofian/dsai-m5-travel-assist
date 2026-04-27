@@ -406,14 +406,27 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
     alternatives = []
     variants = result.get("variants", []) or []
 
+    current_selected_label = (
+        selected_variant.get("variant_label")
+        or executor.get("variant_label")
+        or ""
+    ).strip().lower()
+
     for variant in variants:
         label = variant.get("variant_label", "Alternative")
+
+        # Skip currently selected plan
+        if label.strip().lower() == current_selected_label:
+            continue
+
         v_ranking = variant.get("ranking", {}) or {}
         pct = v_ranking.get("score_pct")
         total = v_ranking.get("estimated_total")
 
         if isinstance(pct, (int, float)):
-            alternatives.append(f"- {label}: {pct:.0f}% / {_format_money(total)}")
+            alternatives.append(
+                f"- {label}: {pct:.0f}% / {_format_money(total)}"
+            )
 
     if alternatives:
         msg.extend(["", "🔁 Other options"])
