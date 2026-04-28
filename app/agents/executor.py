@@ -56,10 +56,20 @@ def _google_flights_link(origin: str, destination: str, start_date: str, end_dat
     return f"https://www.google.com/travel/flights?q={quote_plus(query)}"
 
 
-def _booking_search_link(destination: str, start_date: str, end_date: str) -> str:
+def _booking_search_link(
+    hotel_name: str,
+    destination: str,
+    start_date: str,
+    end_date: str,
+) -> str:
+
+    search_query = f"{hotel_name} {destination}"
+
     return (
         "https://www.booking.com/searchresults.html?"
-        f"ss={quote_plus(destination)}&checkin={start_date}&checkout={end_date}"
+        f"ss={quote_plus(search_query)}"
+        f"&checkin={start_date}"
+        f"&checkout={end_date}"
     )
 
 
@@ -251,7 +261,17 @@ Planner output (JSON):
     hotel_price_num = _to_number(hotel.get("estimated_price", 0))
     transport_price_num = _to_number(transport.get("estimated_cost", 0))
 
-    primary_destination = destinations[0] if destinations else "requested destination"
+    destination_metadata = req.get("destination_metadata", [])
+
+    primary_destination = (
+        destination_metadata[0].get("primary_city")
+        if destination_metadata
+        and isinstance(destination_metadata[0], dict)
+        and destination_metadata[0].get("primary_city")
+        else destinations[0]
+        if destinations
+        else "requested destination"
+    )
 
     data["travel_details"] = {
         "flight": {
@@ -268,6 +288,7 @@ Planner output (JSON):
             "name": str(hotel.get("name", "No hotel suggestion returned")),
             "estimated_price": _format_sgd(hotel_price_num),
             "booking_link": _booking_search_link(
+                hotel_name=str(hotel.get("name", "")),
                 destination=primary_destination,
                 start_date=start_date,
                 end_date=end_date,
