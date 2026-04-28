@@ -41,6 +41,71 @@ DEFAULT_AGENT_PIPELINE = [
 ]
 
 
+def _safe_money_to_float(value: Any, default: float = 0.0) -> float:
+    if value is None:
+        return default
+
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    text = str(value).replace(",", "")
+    digits = "".join(ch for ch in text if ch.isdigit() or ch == ".")
+
+    try:
+        return float(digits)
+    except Exception:
+        return default
+
+
+def _format_sgd(amount: float) -> str:
+    return f"SGD {amount:.0f}"
+
+
+def _apply_budget_delta(
+    executor_output: dict[str, Any],
+    category: str,
+    delta: float,
+) -> dict[str, Any]:
+    cost_breakdown = executor_output.get("cost_breakdown", {})
+
+    if not isinstance(cost_breakdown, dict):
+        cost_breakdown = {}
+
+    current_category = _safe_money_to_float(cost_breakdown.get(category, 0))
+    current_total = _safe_money_to_float(cost_breakdown.get("total", 0))
+
+    updated_category = current_category + delta
+    updated_total = current_total + delta
+
+    cost_breakdown[category] = _format_sgd(updated_category)
+    cost_breakdown["total"] = _format_sgd(updated_total)
+
+    executor_output["cost_breakdown"] = cost_breakdown
+    return executor_output
+
+
+def _sync_ranking_total_from_executor(state: AgentState) -> AgentState:
+    executor_output = state.get("executor_output", {}) or {}
+    ranking_output = state.get("ranking_output", {}) or {}
+
+    cost_breakdown = executor_output.get("cost_breakdown", {}) or {}
+    updated_total = _safe_money_to_float(cost_breakdown.get("total", 0))
+
+    if updated_total > 0:
+        ranking_output["estimated_total"] = updated_total
+        state["ranking_output"] = ranking_output
+
+        selected_variant = state.get("selected_variant", {}) or {}
+        selected_variant_ranking = selected_variant.get("ranking", {}) or {}
+
+        if isinstance(selected_variant_ranking, dict):
+            selected_variant_ranking["estimated_total"] = updated_total
+            selected_variant["ranking"] = selected_variant_ranking
+            state["selected_variant"] = selected_variant
+
+    return state
+
+
 async def maybe_await(result: Any) -> Any:
     if inspect.isawaitable(result):
         return await result
@@ -226,6 +291,12 @@ async def continuity_agent(state: AgentState) -> AgentState:
                 existing_names.add(name)
 
         executor_output["restaurants"] = restaurants
+        
+        executor_output = _apply_budget_delta(
+            executor_output=executor_output,
+            category="food",
+            delta=35,
+        )
 
     if "add_nature_activities" in adjustments:
         attractions = executor_output.get("nearby_attractions", [])
@@ -259,6 +330,12 @@ async def continuity_agent(state: AgentState) -> AgentState:
                 existing_names.add(name)
 
         executor_output["nearby_attractions"] = attractions
+        
+        executor_output = _apply_budget_delta(
+            executor_output=executor_output,
+            category="activities",
+            delta=30,
+        )
 
     if "add_more_activities" in adjustments:
         itinerary = executor_output.get("daily_itinerary", [])
@@ -287,6 +364,12 @@ async def continuity_agent(state: AgentState) -> AgentState:
                 break
 
         executor_output["daily_itinerary"] = itinerary
+
+        executor_output = _apply_budget_delta(
+            executor_output=executor_output,
+            category="activities",
+            delta=25,
+        )
 
     if "relax_pace" in adjustments:
         realism = executor_output.get("realism", {})
@@ -320,8 +403,14 @@ async def continuity_agent(state: AgentState) -> AgentState:
         hotel["comfort_note"] = "User requested a more comfortable stay."
         travel_details["hotel"] = hotel
         executor_output["travel_details"] = travel_details
+        executor_output = _apply_budget_delta(
+            executor_output=executor_output,
+            category="hotel",
+            delta=180,
+        )
 
     state["executor_output"] = executor_output
+    state = _sync_ranking_total_from_executor(state)
 
     return add_trace(
         state,
