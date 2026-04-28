@@ -140,8 +140,11 @@ def apply_followup_preferences(payload: dict, text: str) -> dict:
             ]
         )
 
-    if "activities" in normalized:
-        additions.append("activities")
+    # Do not mutate preferences for generic "add more activities".
+    # The continuity agent handles this through feedback text.
+    # This prevents unrelated sections such as restaurants from changing.
+    if "activities" in normalized and "nature" not in normalized:
+        pass
 
     if "cheaper" in normalized or "budget saver" in normalized:
         additions.extend(

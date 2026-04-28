@@ -368,6 +368,38 @@ async def continuity_agent(state: AgentState) -> AgentState:
 
         executor_output["daily_itinerary"] = itinerary
 
+        attractions = executor_output.get("nearby_attractions", [])
+
+        if not isinstance(attractions, list):
+            attractions = []
+
+        additional_attractions = [
+            {
+                "name": "Local heritage walk",
+                "search_link": "https://www.google.com/search?q=best+local+heritage+walk+nearby",
+                "distance_note": "Suggested additional light activity",
+            },
+            {
+                "name": "Neighbourhood viewpoint",
+                "search_link": "https://www.google.com/search?q=best+viewpoint+nearby",
+                "distance_note": "Suggested additional sightseeing stop",
+            },
+        ]
+
+        existing_names = {
+            str(item.get("name", "")).strip().lower()
+            for item in attractions
+            if isinstance(item, dict)
+        }
+
+        for item in additional_attractions:
+            name = item["name"].strip().lower()
+            if name not in existing_names:
+                attractions.append(item)
+                existing_names.add(name)
+
+        executor_output["nearby_attractions"] = attractions
+
         executor_output = _apply_budget_delta(
             executor_output=executor_output,
             category="activities",
