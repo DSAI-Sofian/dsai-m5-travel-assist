@@ -336,10 +336,20 @@ def parse_trip_request(text: str) -> dict:
             except Exception:
                 pass
 
-    # Fallback: detect bare trailing amount as budget.
-    # Example: "5 days Vietnam sightseeing 1500"
+    # Final fallback: detect standalone 3-6 digit amount after removing duration expressions.
+    # Example: "4d3n penang 1000 food"
     if budget is None:
-        bare_amount_match = re.search(r"\b(\d{3,6})\s*$", lowered)
+        amount_scope = parse_scope
+
+        amount_scope = re.sub(r"\b\d+\s*d\s*\d+\s*n\b", " ", amount_scope)
+        amount_scope = re.sub(
+            r"\b\d+\s*(day|days)\s*\d+\s*(night|nights)\b",
+            " ",
+            amount_scope,
+        )
+        amount_scope = re.sub(r"\b\d+\s*(day|days|d)\b", " ", amount_scope)
+
+        bare_amount_match = re.search(r"\b(\d{3,6})\b", amount_scope)
         if bare_amount_match:
             try:
                 budget = int(bare_amount_match.group(1))
