@@ -222,7 +222,10 @@ async def feedback_agent(state: AgentState) -> AgentState:
             "ranking": selected_variant.get("ranking", {}),
         }
 
-        state["executor_output"] = selected_variant.get("executor_output", {})
+        selected_executor_output = selected_variant.get("executor_output")
+
+        if isinstance(selected_executor_output, dict) and selected_executor_output:
+            state["executor_output"] = selected_executor_output
 
         selected_ranking = selected_variant.get("ranking", {})
 
