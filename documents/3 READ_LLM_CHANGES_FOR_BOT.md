@@ -46,7 +46,13 @@ Only the final layer is provider-specific.
 
 # 📁 Files That Must Be Modified
 
-## 1. `app/llm/client.py` (Most Important)
+## 1. Create `app/llm/client.py` (Recommended Future Abstraction Layer)
+
+**Note:**
+
+This file does not currently exist in the project repository.
+
+It is recommended as a future architecture improvement if another developer wishes to support multiple LLM providers cleanly.
 
 ### Purpose
 
@@ -139,7 +145,7 @@ from groq import Groq
 
 ---
 
-# 📁 2. `app/settings.py` or Environment Config File
+# 📁 2. Create `app/settings.py` or Environment Config File
 
 ### Purpose
 
@@ -453,3 +459,25 @@ That is usually sufficient if the project already uses:
 * centralized client wrapper
 * provider-independent orchestration
 * clean agent abstraction
+
+## Alternatively
+
+For experienced developers,
+
+Run:
+
+```
+grep -R "OpenAI" .
+```
+
+or:
+
+```
+grep -R "chat.completions" .
+```
+
+Then modify whichever files currently contain:
+
+* OpenAI imports
+* API calls
+* model names
