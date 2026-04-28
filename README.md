@@ -498,7 +498,9 @@ The bot supports conversational continuity.
 
 ---
 
-# ⚠️ Current Limitations (to be addressed in future sprints)
+# ⚠️ Current Limitations
+
+To be addressed in future sprints...
 
 ## Known Constraints
 

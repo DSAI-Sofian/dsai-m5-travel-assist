@@ -85,7 +85,7 @@ These remain deterministic for:
 * reproducibility
 * operational stability
 * debugging visibility
-* governance safety        |
+* governance safety        
 
 ---
 
