@@ -243,7 +243,16 @@ def _clean_preference_text(text: str) -> str:
 
     cleaned = _remove_feedback_segment(cleaned)
 
+    # Remove duration expressions
+    cleaned = re.sub(r"\b\d+\s*d\s*\d+\s*n\b", " ", cleaned)
+    cleaned = re.sub(
+        r"\b\d+\s*(day|days)\s*\d+\s*(night|nights)\b",
+        " ",
+        cleaned,
+    )
     cleaned = re.sub(r"\b\d+\s*(day|days|d)\b", " ", cleaned)
+
+    # Remove budget expressions
     cleaned = re.sub(r"\bbudget\s*(s\$|sgd|\$)?\s*\d+\b", " ", cleaned)
     cleaned = re.sub(r"\bunder\s*(s\$|sgd|\$)?\s*\d+\b", " ", cleaned)
     cleaned = re.sub(r"\bbelow\s*(s\$|sgd|\$)?\s*\d+\b", " ", cleaned)
@@ -289,12 +298,25 @@ def parse_trip_request(text: str) -> dict:
     duration_days = 5
     budget = None
 
-    duration_match = re.search(r"(\d+)\s*(day|days|d)\b", parse_scope)
-    if duration_match:
-        try:
-            duration_days = int(duration_match.group(1))
-        except Exception:
-            duration_days = 5
+    duration_patterns = [
+        # Examples: 6D5N, 6D 5N, 6 d 5 n
+        r"\b(\d+)\s*d\s*(\d+)\s*n\b",
+
+        # Examples: 6 days 5 nights, 6 day 5 night
+        r"\b(\d+)\s*(?:day|days)\s*(\d+)\s*(?:night|nights)\b",
+
+        # Examples: 6 days, 6 day, 6d
+        r"\b(\d+)\s*(?:day|days|d)\b",
+    ]
+
+    for pattern in duration_patterns:
+        duration_match = re.search(pattern, parse_scope, flags=re.IGNORECASE)
+        if duration_match:
+            try:
+                duration_days = int(duration_match.group(1))
+                break
+            except Exception:
+                duration_days = 5
 
     budget_patterns = [
         r"\bbudget\s*(?:s\$|sgd|\$)?\s*(\d+)\b",

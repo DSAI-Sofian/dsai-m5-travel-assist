@@ -197,51 +197,94 @@ async def continuity_agent(state: AgentState) -> AgentState:
     if "add_food_places" in adjustments:
         restaurants = executor_output.get("restaurants", [])
 
-        restaurants.extend(
-            [
-                {
-                    "name": "Local food market",
-                    "search_link": "https://www.google.com/search?q=best+local+food+nearby",
-                    "distance_note": "Suggested local food stop",
-                },
-                {
-                    "name": "Popular seafood restaurant",
-                    "search_link": "https://www.google.com/search?q=best+seafood+restaurant+nearby",
-                    "distance_note": "Suggested seafood option",
-                },
-            ]
-        )
+        if not isinstance(restaurants, list):
+            restaurants = []
+
+        additional_restaurants = [
+            {
+                "name": "Local food market",
+                "search_link": "https://www.google.com/search?q=best+local+food+nearby",
+                "distance_note": "Suggested additional local food stop",
+            },
+            {
+                "name": "Popular seafood restaurant",
+                "search_link": "https://www.google.com/search?q=best+seafood+restaurant+nearby",
+                "distance_note": "Suggested additional seafood option",
+            },
+        ]
+
+        existing_names = {
+            str(item.get("name", "")).strip().lower()
+            for item in restaurants
+            if isinstance(item, dict)
+        }
+
+        for item in additional_restaurants:
+            name = item["name"].strip().lower()
+            if name not in existing_names:
+                restaurants.append(item)
+                existing_names.add(name)
 
         executor_output["restaurants"] = restaurants
 
     if "add_nature_activities" in adjustments:
         attractions = executor_output.get("nearby_attractions", [])
 
-        attractions.extend(
-            [
-                {
-                    "name": "Nature park or reserve",
-                    "search_link": "https://www.google.com/search?q=best+nature+park+nearby",
-                    "distance_note": "Suggested nature activity",
-                },
-                {
-                    "name": "Scenic viewpoint",
-                    "search_link": "https://www.google.com/search?q=best+scenic+viewpoint+nearby",
-                    "distance_note": "Suggested scenic stop",
-                },
-            ]
-        )
+        if not isinstance(attractions, list):
+            attractions = []
+
+        additional_attractions = [
+            {
+                "name": "Nature park or reserve",
+                "search_link": "https://www.google.com/search?q=best+nature+park+nearby",
+                "distance_note": "Suggested additional nature activity",
+            },
+            {
+                "name": "Scenic viewpoint",
+                "search_link": "https://www.google.com/search?q=best+scenic+viewpoint+nearby",
+                "distance_note": "Suggested additional scenic stop",
+            },
+        ]
+
+        existing_names = {
+            str(item.get("name", "")).strip().lower()
+            for item in attractions
+            if isinstance(item, dict)
+        }
+
+        for item in additional_attractions:
+            name = item["name"].strip().lower()
+            if name not in existing_names:
+                attractions.append(item)
+                existing_names.add(name)
 
         executor_output["nearby_attractions"] = attractions
 
     if "add_more_activities" in adjustments:
         itinerary = executor_output.get("daily_itinerary", [])
 
-        if itinerary:
-            itinerary[-1]["details"] = (
-                itinerary[-1].get("details", "")
-                + " Add one optional light activity if time allows."
-            )
+        if not isinstance(itinerary, list):
+            itinerary = []
+
+        additional_activity_note = (
+            " Add one optional light activity if time allows."
+        )
+
+        updated_days = 0
+
+        for day in itinerary:
+            if not isinstance(day, dict):
+                continue
+
+            details = day.get("details", "")
+
+            if additional_activity_note.strip() not in details:
+                day["details"] = details + additional_activity_note
+                updated_days += 1
+
+            # Limit modifications to avoid overloading every day
+            if updated_days >= 3:
+                break
 
         executor_output["daily_itinerary"] = itinerary
 

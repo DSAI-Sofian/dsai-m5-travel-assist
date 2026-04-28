@@ -240,7 +240,7 @@ async def start(update, context):
         "- Cheaper option\n"
         "- More comfort please\n"
         "- Less rushed\n"
-        "- Same style as before for new queries\n\n"
+        "- Same style as before (for new queries)\n\n"
         "All prices listed are tentative. You must approach service providers "
         "directly for booking and payment."
     )
@@ -369,7 +369,16 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
 
     if daily_itinerary:
         msg.extend(["", "🗓 Day-by-day itinerary"])
-        for item in _safe_list(daily_itinerary, 5):
+        duration = request_data.get("duration_days", 5)
+
+        try:
+            duration_num = int(duration)
+        except Exception:
+            duration_num = 5
+
+        itinerary_limit = min(max(duration_num, 5), 30)
+        
+        for item in _safe_list(daily_itinerary, itinerary_limit):
             if isinstance(item, dict):
                 msg.append(f"Day {item.get('day', '-')}: {item.get('title', '')}")
                 if item.get("details"):
@@ -379,7 +388,7 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
 
     if attractions:
         msg.extend(["", "📍 Nearby attractions"])
-        for item in _safe_list(attractions, 3):
+        for item in _safe_list(attractions, 6):
             if isinstance(item, dict):
                 msg.append(
                     f"- {item.get('name', 'Attraction')} "
@@ -392,7 +401,7 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
 
     if restaurants:
         msg.extend(["", "🍜 Food & restaurants"])
-        for item in _safe_list(restaurants, 3):
+        for item in _safe_list(restaurants, 6):
             if isinstance(item, dict):
                 msg.append(
                     f"- {item.get('name', 'Restaurant')} "
@@ -441,6 +450,7 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
             "- add more food places",
             "- make it less rushed",
             "- add nature activities",
+            "- add more activities",
         ]
     )
 
