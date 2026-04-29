@@ -445,7 +445,7 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
             else:
                 msg.append(f"- {str(item)}")
 
-        msg.append("")
+            msg.append("")
                 
     if restaurants:
         msg.extend(["", "🍜 Food & restaurants", ""])

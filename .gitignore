@@ -123,3 +123,7 @@ Dockerfile
 
 # Internal metadata
 *.meta.json
+
+# Executed notebooks
+*.executed.ipynb
+*.executed.inprocess.ipynb
