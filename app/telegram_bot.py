@@ -283,7 +283,6 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
     personalization = executor.get("personalization", {}) or {}
 
     daily_itinerary = executor.get("daily_itinerary", []) or []
-    attractions = executor.get("nearby_attractions", []) or []
     restaurants = executor.get("restaurants", []) or []
 
     destinations = request_data.get("display_destinations") or request_data.get("destinations") or []
@@ -361,7 +360,7 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
     )
 
     if flight.get("search_link"):
-        msg.append(f"  Search: {flight.get('search_link')}")
+        msg.append(f"  Search: [Open]({flight.get('search_link')})")
 
     msg.extend(
         [
@@ -376,7 +375,7 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
         msg.append(f"  Note: {hotel.get('comfort_note')}")
 
     if hotel.get("booking_link"):
-        msg.append(f"  Booking search: {hotel.get('booking_link')}")
+        msg.append(f"  Booking search: [Open]({hotel.get('booking_link')})")
 
     msg.extend(
         [
@@ -388,8 +387,7 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
     )
 
     if daily_itinerary:
-        msg.extend(["", "🗓 Day-by-day itinerary"])
-        duration = request_data.get("duration_days", 5)
+        msg.extend(["", "🗓 Day-by-day itinerary", ""])
 
         try:
             duration_num = int(duration)
@@ -397,95 +395,71 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
             duration_num = 5
 
         itinerary_limit = min(max(duration_num, 5), 10)
-        
-        msg.append("")
-        
+
         for item in _safe_list(daily_itinerary, itinerary_limit):
             if isinstance(item, dict):
-                
-                msg.append(f"Day {item.get('day', '-')}: {item.get('title', '')}")
-                
                 city = item.get("city") or dest_text
 
                 if city in ["requested destination", "Not detected", ""]:
                     city = dest_text if dest_text != "Not detected" else ""
-    
-                title = item.get("title", "")
+
+                title = str(item.get("title", "")).strip()
+                day = item.get("day", "-")
+
                 if title:
-                    search_url = (
-                        f"https://www.google.com/search?q="
-                        f"{str(title).replace(' ', '+')}+{city.replace(' ', '+')}"
+                    title_search_url = (
+                        "https://www.google.com/search?q="
+                        f"{title.replace(' ', '+')}+{city.replace(' ', '+')}"
                     )
+                    msg.append(f"Day {day}: {title} [Open]({title_search_url})")
+                else:
+                    msg.append(f"Day {day}: Travel plan")
 
-                    msg.append(f"  Search: [Open]({search_url})")
-
-                city = item.get("city")
                 if city:
                     msg.append(f"  Area: {city}")
 
-                if item.get("morning"):
-                    msg.append(f"  Morning: {item.get('morning')}")
-                    
-                    morning = str(item.get("morning", ""))
-                    city = item.get("city", dest_text)
-
-                    search_url = (
-                        f"https://www.google.com/search?q="
+                morning = str(item.get("morning", "")).strip()
+                if morning:
+                    morning_search_url = (
+                        "https://www.google.com/search?q="
                         f"{morning.replace(' ', '+')}+{city.replace(' ', '+')}"
                     )
+                    msg.append(f"  Morning: {morning} [Open]({morning_search_url})")
 
-                    msg.append(f"  Search: [Open]({search_url})")
+                lunch = str(item.get("lunch", "")).strip()
+                if lunch:
+                    msg.append(f"  Lunch: {lunch}")
 
-                if item.get("lunch"):
-                    msg.append(f"  Lunch: {item.get('lunch')}")
-
-                if item.get("afternoon"):
-                    msg.append(f"  Afternoon: {item.get('afternoon')}")
-                    
-                    afternoon = str(item.get("afternoon", ""))
-                    city = item.get("city", dest_text)
-
-                    search_url = (
-                        f"https://www.google.com/search?q="
+                afternoon = str(item.get("afternoon", "")).strip()
+                if afternoon:
+                    afternoon_search_url = (
+                        "https://www.google.com/search?q="
                         f"{afternoon.replace(' ', '+')}+{city.replace(' ', '+')}"
                     )
+                    msg.append(f"  Afternoon: {afternoon} [Open]({afternoon_search_url})")
 
-                    msg.append(f"  Search: [Open]({search_url})")
-
-                if item.get("evening"):
-                    msg.append(f"  Evening: {item.get('evening')}")
+                evening = str(item.get("evening", "")).strip()
+                if evening:
+                    msg.append(f"  Evening: {evening}")
 
             else:
                 msg.append(f"- {str(item)}")
-            
+
             msg.append("")
 
-#    if attractions:
-#        msg.extend(["", "📍 Nearby attractions"])
-#        for item in _safe_list(attractions, 6):
-#            if isinstance(item, dict):
-#                msg.append(
-#                    f"- {item.get('name', 'Attraction')} "
-#                    f"({item.get('distance_note', 'Not provided')})"
-#                )
-#                if item.get("search_link"):
-#                    msg.append(f"  Search: {item.get('search_link')}")
-#            else:
-#                msg.append(f"- {str(item)}")
-
     if restaurants:
-        msg.extend(["", "🍜 Food & restaurants"])
-        
-        msg.append("")
-        
+        msg.extend(["", "🍜 Food & restaurants", ""])
+
         for item in _safe_list(restaurants, 6):
             if isinstance(item, dict):
-                msg.append(
-                    f"- {item.get('name', 'Restaurant')} "
-                    f"({item.get('distance_note', 'Not provided')})"
-                )
-                if item.get("search_link"):
-                    msg.append(f"  Search: {item.get('search_link')}")
+                name = item.get("name", "Restaurant")
+                distance = item.get("distance_note", "Not provided")
+                search_link = item.get("search_link")
+
+                if search_link:
+                    msg.append(f"- {name} ({distance}) [Open]({search_link})")
+                else:
+                    msg.append(f"- {name} ({distance})")
             else:
                 msg.append(f"- {str(item)}")
 
@@ -501,7 +475,6 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
     for variant in variants:
         label = variant.get("variant_label", "Alternative")
 
-        # Skip currently selected plan
         if label.strip().lower() == current_selected_label:
             continue
 
