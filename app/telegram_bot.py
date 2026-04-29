@@ -399,6 +399,9 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
         
         for item in _safe_list(daily_itinerary, itinerary_limit):
             if isinstance(item, dict):
+                
+                msg.append(f"Day {item.get('day', '-')}: {item.get('title', '')}")
+                
                 city = item.get("city") or dest_text
                 title = item.get("title", "")
                 if title:
