@@ -167,15 +167,31 @@ def apply_followup_preferences(payload: dict, text: str) -> dict:
 
 
 async def send_telegram_message(chat_id: int, text: str):
+    max_length = 3900
+    chunks = []
+
+    current = ""
+    for line in str(text).split("\n"):
+        if len(current) + len(line) + 1 > max_length:
+            chunks.append(current)
+            current = line
+        else:
+            current = f"{current}\n{line}" if current else line
+
+    if current:
+        chunks.append(current)
+
     async with httpx.AsyncClient(timeout=30) as client:
-        await client.post(
-            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-            json={
-                "chat_id": chat_id,
-                "text": text,
-                "disable_web_page_preview": True,
-            },
-        )
+        for chunk in chunks:
+            response = await client.post(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                json={
+                    "chat_id": chat_id,
+                    "text": chunk,
+                    "disable_web_page_preview": True,
+                },
+            )
+            response.raise_for_status()
 
 
 async def send_admin_alert(
@@ -379,7 +395,7 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
         except Exception:
             duration_num = 5
 
-        itinerary_limit = min(max(duration_num, 5), 30)
+        itinerary_limit = min(max(duration_num, 5), 10)
         
         for item in _safe_list(daily_itinerary, itinerary_limit):
             if isinstance(item, dict):
