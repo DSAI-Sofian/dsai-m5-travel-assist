@@ -1,3 +1,17 @@
+# RENDER OPTIMIZATION
+
+- [RENDER OPTIMIZATION](#render-optimization)
+- [⚡ Render Cold-Start Optimization](#-render-cold-start-optimization)
+  - [🩺 Health Endpoint](#-health-endpoint)
+  - [🔄 Uptime Monitoring Strategy](#-uptime-monitoring-strategy)
+  - [⚙️ Current Configuration](#️-current-configuration)
+  - [🎯 Benefits of This Approach](#-benefits-of-this-approach)
+  - [🧠 Design Philosophy](#-design-philosophy)
+  - [🔮 Future Infrastructure Direction](#-future-infrastructure-direction)
+
+
+---
+
 # ⚡ Render Cold-Start Optimization
 
 The SEA Travel Planner Bot is currently deployed on the free-tier infrastructure of Render.

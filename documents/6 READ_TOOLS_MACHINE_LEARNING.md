@@ -1,3 +1,45 @@
+# TOOLS AND MACHINE LEARNING
+- [TOOLS AND MACHINE LEARNING](#tools-and-machine-learning)
+- [🧰 Tools \& Machine Learning Components](#-tools--machine-learning-components)
+- [⚙️ Core Engineering Stack](#️-core-engineering-stack)
+- [🧠 AI \& Machine Learning Design Philosophy](#-ai--machine-learning-design-philosophy)
+  - [Core Principle](#core-principle)
+- [🧩 AI System Architecture](#-ai-system-architecture)
+  - [Hybrid Intelligence Model](#hybrid-intelligence-model)
+- [🤖 Machine Learning Components](#-machine-learning-components)
+  - [1. Natural Language Understanding (NLU)](#1-natural-language-understanding-nlu)
+    - [Current Technique](#current-technique)
+    - [Why This Approach Was Chosen](#why-this-approach-was-chosen)
+- [🧭 2. LLM-Based Planning Agent](#-2-llm-based-planning-agent)
+  - [Current Orchestration Philosophy](#current-orchestration-philosophy)
+    - [Deterministic Layers Handle](#deterministic-layers-handle)
+    - [LLM-Assisted Layers](#llm-assisted-layers)
+- [📊 3. Deterministic Ranking Engine](#-3-deterministic-ranking-engine)
+  - [Current Scoring Formula](#current-scoring-formula)
+  - [Ranking Flow](#ranking-flow)
+- [🧪 4. Sprint 6.x Improvements](#-4-sprint-6x-improvements)
+- [🧠 5. Personalization Engine](#-5-personalization-engine)
+  - [Current Inferred Signals](#current-inferred-signals)
+- [🧩 5A. Activity Metadata Intelligence](#-5a-activity-metadata-intelligence)
+  - [Current Metadata Types](#current-metadata-types)
+  - [Meal-Aware Timing Logic](#meal-aware-timing-logic)
+  - [Diversity Engine](#diversity-engine)
+- [🔁 6. Sprint 6.x Enhancements](#-6-sprint-6x-enhancements)
+- [🧱 7. Structured Output Engineering](#-7-structured-output-engineering)
+- [🔒 AI Governance \& Safety Controls](#-ai-governance--safety-controls)
+  - [Implemented Controls](#implemented-controls)
+- [📈 Future Machine Learning Roadmap](#-future-machine-learning-roadmap)
+  - [Planned Enhancements](#planned-enhancements)
+  - [Sprint 7.x — Budget Feasibility \& Semantic Intelligence](#sprint-7x--budget-feasibility--semantic-intelligence)
+  - [Sprint 8.x — Advanced Destination Intelligence](#sprint-8x--advanced-destination-intelligence)
+  - [Sprint 9.x — Real-Time Intelligence](#sprint-9x--real-time-intelligence)
+  - [Sprint 10.x — Persistent Learning](#sprint-10x--persistent-learning)
+  - [Sprint 11.x — Advanced Travel Intelligence](#sprint-11x--advanced-travel-intelligence)
+- [🧠 Why This Architecture Matters](#-why-this-architecture-matters)
+
+
+---
+
 # 🧰 Tools & Machine Learning Components
 
 This project combines deterministic orchestration, lightweight AI reasoning, and modular engineering patterns to create a practical multi-agent travel assistant.

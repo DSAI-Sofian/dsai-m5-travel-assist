@@ -1,3 +1,39 @@
+# FUTURE DEVELOPMENT GOALS
+
+- [FUTURE DEVELOPMENT GOALS](#future-development-goals)
+- [🧠 Extent of LLM Usage in Travel Bot](#-extent-of-llm-usage-in-travel-bot)
+  - [⚙️ Current AI Orchestration Philosophy](#️-current-ai-orchestration-philosophy)
+  - [🧠 Sprint 6.x Architectural Evolution](#-sprint-6x-architectural-evolution)
+  - [🤖 Current LLM-Assisted Components](#-current-llm-assisted-components)
+  - [Current LLM Usage Philosophy](#current-llm-usage-philosophy)
+  - [🧩 Current Deterministic Components](#-current-deterministic-components)
+  - [🧭 Current Destination Intelligence Behavior](#-current-destination-intelligence-behavior)
+- [🔮 Expanded AI Usage Roadmap](#-expanded-ai-usage-roadmap)
+  - [Sprint 7.x — Budget Feasibility \& Semantic Intelligence](#sprint-7x--budget-feasibility--semantic-intelligence)
+  - [Sprint 8.x — Advanced Destination Intelligence](#sprint-8x--advanced-destination-intelligence)
+  - [Sprint 9.x — Real-Time Travel Intelligence](#sprint-9x--real-time-travel-intelligence)
+  - [Sprint 10.x — Persistent Personalization Intelligence](#sprint-10x--persistent-personalization-intelligence)
+  - [Sprint 11.x — Booking Readiness \& Smart Recommendations](#sprint-11x--booking-readiness--smart-recommendations)
+  - [Sprint 12.x — Specialized AI Agent Expansion](#sprint-12x--specialized-ai-agent-expansion)
+- [🎙️ Future Voice Command Support](#️-future-voice-command-support)
+  - [Planned Sprint 13.x Inclusion](#planned-sprint-13x-inclusion)
+  - [Planned Telegram Voice Workflow](#planned-telegram-voice-workflow)
+  - [Proposed Voice Features](#proposed-voice-features)
+  - [Proposed Technical Direction](#proposed-technical-direction)
+  - [Voice Integration Design Principle](#voice-integration-design-principle)
+- [🎯 Next Development Goals](#-next-development-goals)
+  - [Near-Term Priorities](#near-term-priorities)
+    - [1. Controlled Semantic Refinement](#1-controlled-semantic-refinement)
+    - [2. Real-World Travel Intelligence](#2-real-world-travel-intelligence)
+    - [3. Persistent Personalization](#3-persistent-personalization)
+    - [4. Multi-Destination Reasoning](#4-multi-destination-reasoning)
+    - [5. Conversational Expansion](#5-conversational-expansion)
+    - [6. Advanced Multi-Agent Scaling](#6-advanced-multi-agent-scaling)
+  - [Long-Term Vision](#long-term-vision)
+
+
+---
+
 # 🧠 Extent of LLM Usage in Travel Bot
 
 The Travel Bot uses a hybrid AI architecture that combines deterministic engineering with controlled LLM-assisted reasoning.
