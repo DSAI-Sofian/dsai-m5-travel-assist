@@ -398,6 +398,8 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
 
         itinerary_limit = min(max(duration_num, 5), 10)
         
+        msg.append("")
+        
         for item in _safe_list(daily_itinerary, itinerary_limit):
             if isinstance(item, dict):
                 
@@ -455,6 +457,8 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
 
             else:
                 msg.append(f"- {str(item)}")
+            
+            msg.append("")
 
 #    if attractions:
 #        msg.extend(["", "📍 Nearby attractions"])
@@ -471,6 +475,9 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
 
     if restaurants:
         msg.extend(["", "🍜 Food & restaurants"])
+        
+        msg.append("")
+        
         for item in _safe_list(restaurants, 6):
             if isinstance(item, dict):
                 msg.append(
