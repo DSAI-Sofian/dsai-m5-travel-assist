@@ -384,8 +384,23 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
         for item in _safe_list(daily_itinerary, itinerary_limit):
             if isinstance(item, dict):
                 msg.append(f"Day {item.get('day', '-')}: {item.get('title', '')}")
-                if item.get("details"):
-                    msg.append(f"  {item.get('details')}")
+
+                city = item.get("city")
+                if city:
+                    msg.append(f"  Area: {city}")
+
+                if item.get("morning"):
+                    msg.append(f"  Morning: {item.get('morning')}")
+
+                if item.get("lunch"):
+                    msg.append(f"  Lunch: {item.get('lunch')}")
+
+                if item.get("afternoon"):
+                    msg.append(f"  Afternoon: {item.get('afternoon')}")
+
+                if item.get("evening"):
+                    msg.append(f"  Evening: {item.get('evening')}")
+
             else:
                 msg.append(f"- {str(item)}")
 
