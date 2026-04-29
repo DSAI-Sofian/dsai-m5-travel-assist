@@ -413,12 +413,28 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
 
                 if item.get("morning"):
                     msg.append(f"  Morning: {item.get('morning')}")
+                    
+                    morning = str(item.get("morning", ""))
+                    city = item.get("city", dest_text)
+
+                    msg.append(
+                        f"  Search: https://www.google.com/search?q="
+                        f"{morning.replace(' ', '+')}+{city.replace(' ', '+')}"
+                    )
 
                 if item.get("lunch"):
                     msg.append(f"  Lunch: {item.get('lunch')}")
 
                 if item.get("afternoon"):
                     msg.append(f"  Afternoon: {item.get('afternoon')}")
+                    
+                    afternoon = str(item.get("afternoon", ""))
+                    city = item.get("city", dest_text)
+
+                    msg.append(
+                        f"  Search: https://www.google.com/search?q="
+                        f"{afternoon.replace(' ', '+')}+{city.replace(' ', '+')}"
+                    )
 
                 if item.get("evening"):
                     msg.append(f"  Evening: {item.get('evening')}")
