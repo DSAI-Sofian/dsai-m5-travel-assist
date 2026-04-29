@@ -189,6 +189,7 @@ async def send_telegram_message(chat_id: int, text: str):
                     "chat_id": chat_id,
                     "text": chunk,
                     "disable_web_page_preview": True,
+                    "parse_mode": "Markdown",
                 },
             )
             response.raise_for_status()
@@ -409,10 +410,12 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
     
                 title = item.get("title", "")
                 if title:
-                    msg.append(
-                        f"  Search: https://www.google.com/search?q="
-                        f"{str(title + ' ' + city).replace(' ', '+')}"
+                    search_url = (
+                        f"https://www.google.com/search?q="
+                        f"{str(title).replace(' ', '+')}+{city.replace(' ', '+')}"
                     )
+
+                    msg.append(f"  Search: [Open]({search_url})")
 
                 city = item.get("city")
                 if city:
@@ -424,10 +427,12 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
                     morning = str(item.get("morning", ""))
                     city = item.get("city", dest_text)
 
-                    msg.append(
-                        f"  Search: https://www.google.com/search?q="
+                    search_url = (
+                        f"https://www.google.com/search?q="
                         f"{morning.replace(' ', '+')}+{city.replace(' ', '+')}"
                     )
+
+                    msg.append(f"  Search: [Open]({search_url})")
 
                 if item.get("lunch"):
                     msg.append(f"  Lunch: {item.get('lunch')}")
@@ -438,10 +443,12 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
                     afternoon = str(item.get("afternoon", ""))
                     city = item.get("city", dest_text)
 
-                    msg.append(
-                        f"  Search: https://www.google.com/search?q="
+                    search_url = (
+                        f"https://www.google.com/search?q="
                         f"{afternoon.replace(' ', '+')}+{city.replace(' ', '+')}"
                     )
+
+                    msg.append(f"  Search: [Open]({search_url})")
 
                 if item.get("evening"):
                     msg.append(f"  Evening: {item.get('evening')}")
