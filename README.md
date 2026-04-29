@@ -1,8 +1,8 @@
-# 🌏 SEA Travel Planner — Multi-Agent AI Travel Assistant
+# 🌏 SEA Travel Planner — Multi-Agent AI Travel Assistant [PROTOTYPE]
 
 > Project documentation and architecture evolution.
 
-- [🌏 SEA Travel Planner — Multi-Agent AI Travel Assistant](#-sea-travel-planner--multi-agent-ai-travel-assistant)
+- [🌏 SEA Travel Planner — Multi-Agent AI Travel Assistant \[PROTOTYPE\]](#-sea-travel-planner--multi-agent-ai-travel-assistant-prototype)
 - [📌 Overview](#-overview)
   - [⚖️ Usage \& Intellectual Property Notice](#️-usage--intellectual-property-notice)
   - [🔒 Lightweight Abuse Protection](#-lightweight-abuse-protection)
