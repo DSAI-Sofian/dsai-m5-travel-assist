@@ -71,11 +71,11 @@ If code changes are needed, propose them first before editing.
 
 ### Test Environment
 - Files inspected:
-- [telegram_bot.py](/home/s_sofian/dsai/module_05/dsai-ft2-capstone-travel-assist/app/telegram_bot.py#L22)
-- [conversation_interpreter.py](/home/s_sofian/dsai/module_05/dsai-ft2-capstone-travel-assist/app/intelligence/conversation_interpreter.py#L7)
-- [feedback_interpreter.py](/home/s_sofian/dsai/module_05/dsai-ft2-capstone-travel-assist/app/intelligence/feedback_interpreter.py#L6)
-- [workflow.py](/home/s_sofian/dsai/module_05/dsai-ft2-capstone-travel-assist/app/orchestrator/workflow.py#L192)
-- [abuse_guard.py](/home/s_sofian/dsai/module_05/dsai-ft2-capstone-travel-assist/app/security/abuse_guard.py#L323)
+- telegram_bot.py
+- conversation_interpreter.py
+- feedback_interpreter.py
+- workflow.py
+- abuse_guard.py
 - Commands run:
 - `rg -n "chat_last_payloads|is_followup_request|apply_followup_preferences|..."`
 - `nl -ba app/telegram_bot.py | sed -n '1,700p'`
@@ -98,9 +98,9 @@ If code changes are needed, propose them first before editing.
 
 ### Detailed Findings
 - cheaper option
-- Detection: `is_followup_request()` matches `"cheaper"` ([telegram_bot.py](/home/s_sofian/dsai/module_05/dsai-ft2-capstone-travel-assist/app/telegram_bot.py#L68)).
-- Preferences added: `budget`, `cost saving`, `affordable` ([telegram_bot.py](/home/s_sofian/dsai/module_05/dsai-ft2-capstone-travel-assist/app/telegram_bot.py#L149)).
-- Feedback passed: yes, via `payload["feedback"] = text` in follow-up branch ([telegram_bot.py](/home/s_sofian/dsai/module_05/dsai-ft2-capstone-travel-assist/app/telegram_bot.py#L571)).
+- Detection: `is_followup_request()` matches `"cheaper"` (telegram_bot.py).
+- Preferences added: `budget`, `cost saving`, `affordable` (telegram_bot.py).
+- Feedback passed: yes, via `payload["feedback"] = text` in follow-up branch (telegram_bot.py).
 - Risk: continuity interpreter does not tag cheaper as `has_followup`; cheaper handling depends on feedback interpreter/variant selection path.
 
 - more comfort please
@@ -129,12 +129,12 @@ If code changes are needed, propose them first before editing.
 
 - add more activities
 - Detection: yes.
-- Preferences added: none by design (`pass` block; explicit comment says continuity should handle it) ([telegram_bot.py](/home/s_sofian/dsai/module_05/dsai-ft2-capstone-travel-assist/app/telegram_bot.py#L143)).
+- Preferences added: none by design (`pass` block; explicit comment says continuity should handle it) (telegram_bot.py).
 - Feedback passed: yes.
 - Risk: low; behavior is intentional and backend continuity adds activities/attractions.
 
 Additional note on `chat_last_payloads`:
-- It stores last successful request per `chat_id` ([telegram_bot.py](/home/s_sofian/dsai/module_05/dsai-ft2-capstone-travel-assist/app/telegram_bot.py#L22), [telegram_bot.py](/home/s_sofian/dsai/module_05/dsai-ft2-capstone-travel-assist/app/telegram_bot.py#L597)).
+- It stores last successful request per `chat_id` (telegram_bot.py).
 - Follow-up requires both `is_followup_request(text)` and existing `chat_last_payloads[chat_id]`.
 - Minor risk: `apply_followup_preferences()` mutates the `preferences` list object (shallow-copy behavior), so state can change even before backend success.
 
