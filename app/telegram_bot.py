@@ -403,6 +403,10 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
                 msg.append(f"Day {item.get('day', '-')}: {item.get('title', '')}")
                 
                 city = item.get("city") or dest_text
+
+                if city in ["requested destination", "Not detected", ""]:
+                    city = dest_text if dest_text != "Not detected" else ""
+    
                 title = item.get("title", "")
                 if title:
                     msg.append(
