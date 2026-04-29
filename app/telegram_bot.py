@@ -399,7 +399,13 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
         
         for item in _safe_list(daily_itinerary, itinerary_limit):
             if isinstance(item, dict):
-                msg.append(f"Day {item.get('day', '-')}: {item.get('title', '')}")
+                city = item.get("city") or dest_text
+                title = item.get("title", "")
+                if title:
+                    msg.append(
+                        f"  Search: https://www.google.com/search?q="
+                        f"{str(title + ' ' + city).replace(' ', '+')}"
+                    )
 
                 city = item.get("city")
                 if city:
@@ -420,18 +426,18 @@ def build_telegram_summary(result: dict, fallback_payload: dict) -> str:
             else:
                 msg.append(f"- {str(item)}")
 
-    if attractions:
-        msg.extend(["", "📍 Nearby attractions"])
-        for item in _safe_list(attractions, 6):
-            if isinstance(item, dict):
-                msg.append(
-                    f"- {item.get('name', 'Attraction')} "
-                    f"({item.get('distance_note', 'Not provided')})"
-                )
-                if item.get("search_link"):
-                    msg.append(f"  Search: {item.get('search_link')}")
-            else:
-                msg.append(f"- {str(item)}")
+#    if attractions:
+#        msg.extend(["", "📍 Nearby attractions"])
+#        for item in _safe_list(attractions, 6):
+#            if isinstance(item, dict):
+#                msg.append(
+#                    f"- {item.get('name', 'Attraction')} "
+#                    f"({item.get('distance_note', 'Not provided')})"
+#                )
+#                if item.get("search_link"):
+#                    msg.append(f"  Search: {item.get('search_link')}")
+#            else:
+#                msg.append(f"- {str(item)}")
 
     if restaurants:
         msg.extend(["", "🍜 Food & restaurants"])
